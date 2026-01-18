@@ -1,0 +1,78 @@
+[
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/drawable_edit_text_background.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/drawable/edit_text_background.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/drawable_widget_state_background.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/drawable/widget_state_background.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/mipmap-hdpi_ic_launcher.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/mipmap-hdpi/ic_launcher.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/layout_widget_calendar.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/layout/widget_calendar.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/drawable_settings_button_background.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/drawable/settings_button_background.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/layout_activity_main.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/layout/activity_main.xml"
+    },
+    {
+        "merged": "org.orgcalendar.app-merged_res-37:/xml_preferences.xml.flat",
+        "source": "org.orgcalendar.app-main-39:/xml/preferences.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/drawable_widget_item_background.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/drawable/widget_item_background.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/layout_activity_settings.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/layout/activity_settings.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/drawable_ic_launcher_background.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/drawable/ic_launcher_background.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/drawable_ic_settings.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/drawable/ic_settings.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/drawable_ic_notification.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/drawable/ic_notification.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/drawable_widget_background.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/drawable/widget_background.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/xml_preferences.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/xml/preferences.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/xml_calendar_widget_info.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/xml/calendar_widget_info.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/layout_widget_event_item.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/layout/widget_event_item.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/drawable_button_background.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/drawable/button_background.xml"
+    },
+    {
+        "merged": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-merged_res-37:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "/home/bala/.gradle/daemon/8.5/org.orgcalendar.app-main-39:/mipmap-anydpi-v26/ic_launcher.xml"
+    }
+]

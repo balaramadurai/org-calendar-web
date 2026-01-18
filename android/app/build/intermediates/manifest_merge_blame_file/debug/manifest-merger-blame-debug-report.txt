@@ -1,0 +1,414 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="org.orgcalendar"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="21"
+9        android:targetSdkVersion="34" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:5:5-67
+11-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:5:22-64
+12    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+12-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:6:5-79
+12-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:6:22-76
+13
+14    <!-- Notification permissions -->
+15    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+15-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:9:5-77
+15-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:9:22-74
+16    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+16-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:10:5-79
+16-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:10:22-76
+17    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+17-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:11:5-74
+17-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:11:22-71
+18    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+18-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:12:5-81
+18-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:12:22-78
+19    <uses-permission android:name="android.permission.WAKE_LOCK" />
+19-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:13:5-68
+19-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:13:22-65
+20
+21    <!-- Calendar permissions (for "Open in Calendar" feature) -->
+22    <uses-permission android:name="android.permission.READ_CALENDAR" />
+22-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:16:5-72
+22-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:16:22-69
+23    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+23-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:17:5-73
+23-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:17:22-70
+24    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+24-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:26:5-77
+24-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:26:22-74
+25
+26    <permission
+26-->[androidx.core:core:1.9.0] /home/bala/.gradle/caches/transforms-3/69031d9de34e6ae4e80492f7a424b6d1/transformed/core-1.9.0/AndroidManifest.xml:22:5-24:47
+27        android:name="org.orgcalendar.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+27-->[androidx.core:core:1.9.0] /home/bala/.gradle/caches/transforms-3/69031d9de34e6ae4e80492f7a424b6d1/transformed/core-1.9.0/AndroidManifest.xml:23:9-81
+28        android:protectionLevel="signature" />
+28-->[androidx.core:core:1.9.0] /home/bala/.gradle/caches/transforms-3/69031d9de34e6ae4e80492f7a424b6d1/transformed/core-1.9.0/AndroidManifest.xml:24:9-44
+29
+30    <uses-permission android:name="org.orgcalendar.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+30-->[androidx.core:core:1.9.0] /home/bala/.gradle/caches/transforms-3/69031d9de34e6ae4e80492f7a424b6d1/transformed/core-1.9.0/AndroidManifest.xml:26:5-97
+30-->[androidx.core:core:1.9.0] /home/bala/.gradle/caches/transforms-3/69031d9de34e6ae4e80492f7a424b6d1/transformed/core-1.9.0/AndroidManifest.xml:26:22-94
+31
+32    <application
+32-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:19:5-87:19
+33        android:allowBackup="true"
+33-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:20:9-35
+34        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+34-->[androidx.core:core:1.9.0] /home/bala/.gradle/caches/transforms-3/69031d9de34e6ae4e80492f7a424b6d1/transformed/core-1.9.0/AndroidManifest.xml:28:18-86
+35        android:debuggable="true"
+36        android:extractNativeLibs="true"
+37        android:icon="@mipmap/ic_launcher"
+37-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:21:9-43
+38        android:label="@string/app_name"
+38-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:22:9-41
+39        android:theme="@style/Theme.OrgCalendar"
+39-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:23:9-49
+40        android:usesCleartextTraffic="true" >
+40-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:24:9-44
+41        <activity
+41-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:26:9-35:20
+42            android:name="org.orgcalendar.MainActivity"
+42-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:27:13-41
+43            android:configChanges="orientation|screenSize|keyboardHidden"
+43-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:29:13-74
+44            android:exported="true"
+44-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:28:13-36
+45            android:windowSoftInputMode="adjustResize" >
+45-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:30:13-55
+46            <intent-filter>
+46-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:31:13-34:29
+47                <action android:name="android.intent.action.MAIN" />
+47-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:32:17-69
+47-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:32:25-66
+48
+49                <category android:name="android.intent.category.LAUNCHER" />
+49-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:33:17-77
+49-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:33:27-74
+50            </intent-filter>
+51        </activity>
+52
+53        <!-- Calendar Widget -->
+54        <receiver
+54-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:38:9-48:20
+55            android:name="org.orgcalendar.CalendarWidget"
+55-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:39:13-43
+56            android:exported="true"
+56-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:40:13-36
+57            android:label="@string/widget_name" >
+57-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:41:13-48
+58            <intent-filter>
+58-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:42:13-44:29
+59                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+59-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:43:17-84
+59-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:43:25-81
+60            </intent-filter>
+61
+62            <meta-data
+62-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:45:13-47:64
+63                android:name="android.appwidget.provider"
+63-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:46:17-58
+64                android:resource="@xml/calendar_widget_info" />
+64-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:47:17-61
+65        </receiver>
+66
+67        <!-- Widget Service for list -->
+68        <service
+68-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:51:9-54:72
+69            android:name="org.orgcalendar.CalendarWidgetService"
+69-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:52:13-50
+70            android:exported="false"
+70-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:53:13-37
+71            android:permission="android.permission.BIND_REMOTEVIEWS" />
+71-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:54:13-69
+72
+73        <!-- Notification Settings Activity -->
+74        <activity
+74-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:57:9-61:40
+75            android:name="org.orgcalendar.SettingsActivity"
+75-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:58:13-45
+76            android:exported="false"
+76-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:61:13-37
+77            android:label="@string/settings_title"
+77-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:59:13-51
+78            android:parentActivityName="org.orgcalendar.MainActivity" />
+78-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:60:13-55
+79
+80        <!-- Alarm Receiver for scheduled notifications -->
+81        <receiver
+81-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:64:9-67:40
+82            android:name="org.orgcalendar.AlarmReceiver"
+82-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:65:13-42
+83            android:enabled="true"
+83-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:66:13-35
+84            android:exported="false" />
+84-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:67:13-37
+85
+86        <!-- Notification Action Receiver (Mark Done, Open Calendar) -->
+87        <receiver
+87-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:70:9-73:40
+88            android:name="org.orgcalendar.NotificationActionReceiver"
+88-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:71:13-55
+89            android:enabled="true"
+89-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:72:13-35
+90            android:exported="false" />
+90-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:73:13-37
+91
+92        <!-- Boot Receiver to reschedule notifications after reboot -->
+93        <receiver
+93-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:76:9-85:20
+94            android:name="org.orgcalendar.BootReceiver"
+94-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:77:13-41
+95            android:directBootAware="true"
+95-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:80:13-43
+96            android:enabled="true"
+96-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:78:13-35
+97            android:exported="true" >
+97-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:79:13-36
+98            <intent-filter>
+98-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:81:13-84:29
+99                <action android:name="android.intent.action.BOOT_COMPLETED" />
+99-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:82:17-79
+99-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:82:25-76
+100                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+100-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:83:17-82
+100-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:83:25-79
+101            </intent-filter>
+102        </receiver>
+103
+104        <provider
+104-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:29:9-37:20
+105            android:name="androidx.startup.InitializationProvider"
+105-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:30:13-67
+106            android:authorities="org.orgcalendar.androidx-startup"
+106-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:31:13-68
+107            android:exported="false" >
+107-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:32:13-37
+108            <meta-data
+108-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:34:13-36:52
+109                android:name="androidx.work.WorkManagerInitializer"
+109-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:35:17-68
+110                android:value="androidx.startup" />
+110-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:36:17-49
+111            <meta-data
+111-->[androidx.emoji2:emoji2:1.2.0] /home/bala/.gradle/caches/transforms-3/986cb90b811bf58fb8e8ff4e6584552d/transformed/emoji2-1.2.0/AndroidManifest.xml:29:13-31:52
+112                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+112-->[androidx.emoji2:emoji2:1.2.0] /home/bala/.gradle/caches/transforms-3/986cb90b811bf58fb8e8ff4e6584552d/transformed/emoji2-1.2.0/AndroidManifest.xml:30:17-75
+113                android:value="androidx.startup" />
+113-->[androidx.emoji2:emoji2:1.2.0] /home/bala/.gradle/caches/transforms-3/986cb90b811bf58fb8e8ff4e6584552d/transformed/emoji2-1.2.0/AndroidManifest.xml:31:17-49
+114            <meta-data
+114-->[androidx.lifecycle:lifecycle-process:2.4.1] /home/bala/.gradle/caches/transforms-3/b414648e0504e137bfb93e4ffd20cdf8/transformed/lifecycle-process-2.4.1/AndroidManifest.xml:31:13-33:52
+115                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+115-->[androidx.lifecycle:lifecycle-process:2.4.1] /home/bala/.gradle/caches/transforms-3/b414648e0504e137bfb93e4ffd20cdf8/transformed/lifecycle-process-2.4.1/AndroidManifest.xml:32:17-78
+116                android:value="androidx.startup" />
+116-->[androidx.lifecycle:lifecycle-process:2.4.1] /home/bala/.gradle/caches/transforms-3/b414648e0504e137bfb93e4ffd20cdf8/transformed/lifecycle-process-2.4.1/AndroidManifest.xml:33:17-49
+117        </provider>
+118
+119        <service
+119-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:39:9-45:35
+120            android:name="androidx.work.impl.background.systemalarm.SystemAlarmService"
+120-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:40:13-88
+121            android:directBootAware="false"
+121-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:41:13-44
+122            android:enabled="@bool/enable_system_alarm_service_default"
+122-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:42:13-72
+123            android:exported="false" />
+123-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:43:13-37
+124        <service
+124-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:46:9-52:35
+125            android:name="androidx.work.impl.background.systemjob.SystemJobService"
+125-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:47:13-84
+126            android:directBootAware="false"
+126-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:48:13-44
+127            android:enabled="@bool/enable_system_job_service_default"
+127-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:49:13-70
+128            android:exported="true"
+128-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:50:13-36
+129            android:permission="android.permission.BIND_JOB_SERVICE" />
+129-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:51:13-69
+130        <service
+130-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:53:9-59:35
+131            android:name="androidx.work.impl.foreground.SystemForegroundService"
+131-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:54:13-81
+132            android:directBootAware="false"
+132-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:55:13-44
+133            android:enabled="@bool/enable_system_foreground_service_default"
+133-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:56:13-77
+134            android:exported="false" />
+134-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:57:13-37
+135
+136        <receiver
+136-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:61:9-66:35
+137            android:name="androidx.work.impl.utils.ForceStopRunnable$BroadcastReceiver"
+137-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:62:13-88
+138            android:directBootAware="false"
+138-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:63:13-44
+139            android:enabled="true"
+139-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:64:13-35
+140            android:exported="false" />
+140-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:65:13-37
+141        <receiver
+141-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:67:9-77:20
+142            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryChargingProxy"
+142-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:68:13-106
+143            android:directBootAware="false"
+143-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:69:13-44
+144            android:enabled="false"
+144-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:70:13-36
+145            android:exported="false" >
+145-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:71:13-37
+146            <intent-filter>
+146-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:73:13-76:29
+147                <action android:name="android.intent.action.ACTION_POWER_CONNECTED" />
+147-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:74:17-87
+147-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:74:25-84
+148                <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED" />
+148-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:75:17-90
+148-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:75:25-87
+149            </intent-filter>
+150        </receiver>
+151        <receiver
+151-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:78:9-88:20
+152            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$BatteryNotLowProxy"
+152-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:79:13-104
+153            android:directBootAware="false"
+153-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:80:13-44
+154            android:enabled="false"
+154-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:81:13-36
+155            android:exported="false" >
+155-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:82:13-37
+156            <intent-filter>
+156-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:84:13-87:29
+157                <action android:name="android.intent.action.BATTERY_OKAY" />
+157-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:85:17-77
+157-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:85:25-74
+158                <action android:name="android.intent.action.BATTERY_LOW" />
+158-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:86:17-76
+158-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:86:25-73
+159            </intent-filter>
+160        </receiver>
+161        <receiver
+161-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:89:9-99:20
+162            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$StorageNotLowProxy"
+162-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:90:13-104
+163            android:directBootAware="false"
+163-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:91:13-44
+164            android:enabled="false"
+164-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:92:13-36
+165            android:exported="false" >
+165-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:93:13-37
+166            <intent-filter>
+166-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:95:13-98:29
+167                <action android:name="android.intent.action.DEVICE_STORAGE_LOW" />
+167-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:96:17-83
+167-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:96:25-80
+168                <action android:name="android.intent.action.DEVICE_STORAGE_OK" />
+168-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:97:17-82
+168-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:97:25-79
+169            </intent-filter>
+170        </receiver>
+171        <receiver
+171-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:100:9-109:20
+172            android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy"
+172-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:101:13-103
+173            android:directBootAware="false"
+173-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:102:13-44
+174            android:enabled="false"
+174-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:103:13-36
+175            android:exported="false" >
+175-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:104:13-37
+176            <intent-filter>
+176-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:106:13-108:29
+177                <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+177-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:107:17-79
+177-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:107:25-76
+178            </intent-filter>
+179        </receiver>
+180        <receiver
+180-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:110:9-121:20
+181            android:name="androidx.work.impl.background.systemalarm.RescheduleReceiver"
+181-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:111:13-88
+182            android:directBootAware="false"
+182-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:112:13-44
+183            android:enabled="false"
+183-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:113:13-36
+184            android:exported="false" >
+184-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:114:13-37
+185            <intent-filter>
+185-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:116:13-120:29
+186                <action android:name="android.intent.action.BOOT_COMPLETED" />
+186-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:82:17-79
+186-->/home/bala/Code/org-calendar-web/android/app/src/main/AndroidManifest.xml:82:25-76
+187                <action android:name="android.intent.action.TIME_SET" />
+187-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:118:17-73
+187-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:118:25-70
+188                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+188-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:119:17-81
+188-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:119:25-78
+189            </intent-filter>
+190        </receiver>
+191        <receiver
+191-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:122:9-131:20
+192            android:name="androidx.work.impl.background.systemalarm.ConstraintProxyUpdateReceiver"
+192-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:123:13-99
+193            android:directBootAware="false"
+193-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:124:13-44
+194            android:enabled="@bool/enable_system_alarm_service_default"
+194-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:125:13-72
+195            android:exported="false" >
+195-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:126:13-37
+196            <intent-filter>
+196-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:128:13-130:29
+197                <action android:name="androidx.work.impl.background.systemalarm.UpdateProxies" />
+197-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:129:17-98
+197-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:129:25-95
+198            </intent-filter>
+199        </receiver>
+200        <receiver
+200-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:132:9-142:20
+201            android:name="androidx.work.impl.diagnostics.DiagnosticsReceiver"
+201-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:133:13-78
+202            android:directBootAware="false"
+202-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:134:13-44
+203            android:enabled="true"
+203-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:135:13-35
+204            android:exported="true"
+204-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:136:13-36
+205            android:permission="android.permission.DUMP" >
+205-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:137:13-57
+206            <intent-filter>
+206-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:139:13-141:29
+207                <action android:name="androidx.work.diagnostics.REQUEST_DIAGNOSTICS" />
+207-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:140:17-88
+207-->[androidx.work:work-runtime:2.9.0] /home/bala/.gradle/caches/transforms-3/68a803762212c9a7964a3372cfec7fa4/transformed/work-runtime-2.9.0/AndroidManifest.xml:140:25-85
+208            </intent-filter>
+209        </receiver>
+210
+211        <uses-library
+211-->[androidx.window:window:1.0.0] /home/bala/.gradle/caches/transforms-3/f85d8380377799d3d79bbe7a0a0e480a/transformed/window-1.0.0/AndroidManifest.xml:25:9-27:40
+212            android:name="androidx.window.extensions"
+212-->[androidx.window:window:1.0.0] /home/bala/.gradle/caches/transforms-3/f85d8380377799d3d79bbe7a0a0e480a/transformed/window-1.0.0/AndroidManifest.xml:26:13-54
+213            android:required="false" />
+213-->[androidx.window:window:1.0.0] /home/bala/.gradle/caches/transforms-3/f85d8380377799d3d79bbe7a0a0e480a/transformed/window-1.0.0/AndroidManifest.xml:27:13-37
+214        <uses-library
+214-->[androidx.window:window:1.0.0] /home/bala/.gradle/caches/transforms-3/f85d8380377799d3d79bbe7a0a0e480a/transformed/window-1.0.0/AndroidManifest.xml:28:9-30:40
+215            android:name="androidx.window.sidecar"
+215-->[androidx.window:window:1.0.0] /home/bala/.gradle/caches/transforms-3/f85d8380377799d3d79bbe7a0a0e480a/transformed/window-1.0.0/AndroidManifest.xml:29:13-51
+216            android:required="false" />
+216-->[androidx.window:window:1.0.0] /home/bala/.gradle/caches/transforms-3/f85d8380377799d3d79bbe7a0a0e480a/transformed/window-1.0.0/AndroidManifest.xml:30:13-37
+217
+218        <service
+218-->[androidx.room:room-runtime:2.5.0] /home/bala/.gradle/caches/transforms-3/af76dc6b7334161bc40e9c488c02f45a/transformed/room-runtime-2.5.0/AndroidManifest.xml:24:9-28:63
+219            android:name="androidx.room.MultiInstanceInvalidationService"
+219-->[androidx.room:room-runtime:2.5.0] /home/bala/.gradle/caches/transforms-3/af76dc6b7334161bc40e9c488c02f45a/transformed/room-runtime-2.5.0/AndroidManifest.xml:25:13-74
+220            android:directBootAware="true"
+220-->[androidx.room:room-runtime:2.5.0] /home/bala/.gradle/caches/transforms-3/af76dc6b7334161bc40e9c488c02f45a/transformed/room-runtime-2.5.0/AndroidManifest.xml:26:13-43
+221            android:exported="false" />
+221-->[androidx.room:room-runtime:2.5.0] /home/bala/.gradle/caches/transforms-3/af76dc6b7334161bc40e9c488c02f45a/transformed/room-runtime-2.5.0/AndroidManifest.xml:27:13-37
+222    </application>
+223
+224</manifest>

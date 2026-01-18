@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Server Configuration Category -->
+    <PreferenceCategory
+        android:title="Server Configuration">
+
+        <EditTextPreference
+            android:key="server_url"
+            android:title="Server URL"
+            android:summary="Address of your org-calendar server"
+            android:defaultValue="http://192.168.1.100:8766"
+            android:inputType="textUri" />
+
+    </PreferenceCategory>
+
+    <!-- Notifications Category -->
+    <PreferenceCategory
+        android:title="Notifications">
+
+        <!-- Global notification toggle -->
+        <SwitchPreferenceCompat
+            android:key="notification_enabled"
+            android:title="@string/pref_notification_enabled"
+            android:summary="@string/pref_notification_enabled_summary"
+            android:defaultValue="false"
+            android:icon="@drawable/ic_notification" />
+
+    </PreferenceCategory>
+
+    <!-- Event Types Category -->
+    <PreferenceCategory
+        android:title="@string/pref_category_event_types"
+        app:initialExpandedChildrenCount="2">
+
+        <SwitchPreferenceCompat
+            android:key="org_notifications_enabled"
+            android:title="@string/pref_org_notifications"
+            android:summary="@string/pref_org_notifications_summary"
+            android:defaultValue="true"
+            android:dependency="notification_enabled" />
+
+        <SwitchPreferenceCompat
+            android:key="ics_notifications_enabled"
+            android:title="@string/pref_ics_notifications"
+            android:summary="@string/pref_ics_notifications_summary"
+            android:defaultValue="true"
+            android:dependency="notification_enabled" />
+
+    </PreferenceCategory>
+
+    <!-- Timing Category -->
+    <PreferenceCategory
+        android:title="@string/pref_category_timing">
+
+        <ListPreference
+            android:key="notification_lead_time"
+            android:title="@string/pref_lead_time"
+            android:summary="@string/pref_lead_time_summary"
+            android:entries="@array/lead_time_entries"
+            android:entryValues="@array/lead_time_values"
+            android:defaultValue="15"
+            android:dependency="notification_enabled" />
+
+    </PreferenceCategory>
+
+    <!-- Daily Summary Category -->
+    <PreferenceCategory
+        android:title="@string/pref_category_daily_summary">
+
+        <SwitchPreferenceCompat
+            android:key="daily_summary_enabled"
+            android:title="@string/pref_daily_summary"
+            android:summary="@string/pref_daily_summary_summary"
+            android:defaultValue="false"
+            android:dependency="notification_enabled" />
+
+        <Preference
+            android:key="daily_summary_time"
+            android:title="@string/pref_daily_summary_time"
+            android:summary="@string/pref_daily_summary_time_summary"
+            android:defaultValue="08:00"
+            android:dependency="daily_summary_enabled" />
+
+    </PreferenceCategory>
+
+    <!-- Calendars Category (will be dynamically populated) -->
+    <PreferenceCategory
+        android:key="calendar_category"
+        android:title="@string/pref_category_calendars">
+
+        <Preference
+            android:key="calendar_info"
+            android:summary="Per-calendar notification settings will appear here when ICS calendars are configured"
+            android:selectable="false" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

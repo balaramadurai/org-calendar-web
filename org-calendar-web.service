@@ -1,0 +1,25 @@
+[Unit]
+Description=Org Calendar Web Server
+After=network.target emacs.service
+# Wants = soft dependency (start if available, but don't fail if not)
+# Change to Requires=emacs.service if you want hard dependency
+Wants=emacs.service
+
+[Service]
+Type=simple
+User=bala
+WorkingDirectory=/home/bala/Code/org-calendar-web
+Environment="PATH=/home/bala/Code/org-calendar-web/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="ORG_CAL_PORT=8766"
+# Emacs socket path (required for systemd to find emacsclient)
+Environment="EMACS_SOCKET_NAME=/run/user/1000/emacs/server"
+ExecStart=/home/bala/Code/org-calendar-web/backend/.venv/bin/python /home/bala/Code/org-calendar-web/backend/server.py
+Restart=on-failure
+RestartSec=5
+
+# Security hardening (optional)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

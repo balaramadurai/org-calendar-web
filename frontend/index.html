@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Org Calendar</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📅</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Offline Banner -->
+        <div class="offline-banner" id="offlineBanner" hidden>
+            <span class="offline-icon">📡</span>
+            <span class="offline-text">Offline Mode</span>
+            <span class="offline-pending" id="offlinePending" hidden>(<span id="pendingCount">0</span> pending)</span>
+            <button class="offline-sync-btn" id="offlineSyncBtn" hidden>Sync Now</button>
+        </div>
+
+        <!-- Header -->
+        <header class="header">
+            <button class="icon-btn" id="menuBtn" aria-label="Menu" data-tooltip="Toggle Sidebar">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+            </button>
+            <button class="nav-btn" id="prevBtn" aria-label="Previous">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <h1 class="date-title" id="dateTitle">Dec 29 - Jan 4</h1>
+            <button class="nav-btn" id="nextBtn" aria-label="Next">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+            <div class="header-actions">
+                <!-- Year view toggle (shown only in year view) -->
+                <div class="year-view-toggle" id="navYearToggle" hidden>
+                    <button class="year-toggle-btn active" data-mode="heatmap" title="Heatmap view">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="4" height="4"/><rect x="6" y="1" width="4" height="4"/><rect x="11" y="1" width="4" height="4"/><rect x="1" y="6" width="4" height="4"/><rect x="6" y="6" width="4" height="4"/><rect x="11" y="6" width="4" height="4"/><rect x="1" y="11" width="4" height="4"/><rect x="6" y="11" width="4" height="4"/><rect x="11" y="11" width="4" height="4"/></svg>
+                    </button>
+                    <button class="year-toggle-btn" data-mode="glance" title="Year at a glance">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="0" y="2" width="16" height="2"/><rect x="0" y="6" width="16" height="2"/><rect x="0" y="10" width="16" height="2"/><rect x="0" y="14" width="12" height="2"/></svg>
+                    </button>
+                </div>
+                <button class="icon-btn" id="searchBtn" aria-label="Search" data-tooltip="Search (/)">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                </button>
+                <button class="icon-btn" id="refreshBtn" aria-label="Refresh" data-tooltip="Refresh (R)">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                </button>
+                <button class="icon-btn" id="settingsBtn" aria-label="Settings" data-tooltip="Settings">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                </button>
+                <button class="icon-btn" id="todayBtn" aria-label="Today" data-tooltip="Today (T)">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+                </button>
+                <div class="view-menu-container">
+                    <button class="icon-btn" id="viewMenuBtn" aria-label="View options" data-tooltip="Views">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                    </button>
+                    <div class="view-menu" id="viewMenu" hidden>
+                        <div class="view-menu-header">View options</div>
+                        <button class="view-menu-item" data-view="week">Week</button>
+                        <button class="view-menu-item" data-view="3day">3 Day</button>
+                        <button class="view-menu-item" data-view="day">Day</button>
+                        <button class="view-menu-item" data-view="agenda">Agenda</button>
+                        <button class="view-menu-item" data-view="month">Month <span class="view-menu-badge">Rocks</span></button>
+                        <button class="view-menu-item" data-view="year">Year <span class="view-menu-badge">Heatmap</span></button>
+                        <div class="view-menu-divider"></div>
+                        <button class="view-menu-item" id="showShortcutsBtn">Keyboard Shortcuts</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Search bar (hidden by default) -->
+        <div class="search-bar" id="searchBar" hidden>
+            <button class="search-back-btn" id="searchBackBtn" aria-label="Back to calendar">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            </button>
+            <input type="search" id="searchInput" placeholder="Search events...">
+        </div>
+
+        <!-- Main content area -->
+        <div class="main-container">
+            <!-- Sidebar -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-resize-handle" id="sidebarResizeHandle"></div>
+                <div class="mini-calendar">
+                    <div class="mini-calendar-header">
+                        <span class="mini-month" id="miniMonth">January 2026</span>
+                        <div class="mini-nav-buttons">
+                            <button class="mini-nav-btn" id="miniPrevBtn">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                            </button>
+                            <button class="mini-nav-btn" id="miniNextBtn">
+                                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mini-calendar-grid">
+                        <div class="mini-weekday-header"></div>
+                        <div class="mini-weekday">M</div>
+                        <div class="mini-weekday">T</div>
+                        <div class="mini-weekday">W</div>
+                        <div class="mini-weekday">T</div>
+                        <div class="mini-weekday">F</div>
+                        <div class="mini-weekday">S</div>
+                        <div class="mini-weekday">S</div>
+                    </div>
+                    <div class="mini-calendar-body" id="miniCalendarBody"></div>
+                </div>
+                <div class="sidebar-filters">
+                    <div class="para-section" id="inboxSection">
+                        <h3 class="para-header" data-para="Inbox">
+                            <svg class="collapse-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                            Inbox
+                        </h3>
+                        <div class="para-list" id="inboxList"></div>
+                    </div>
+                    <div class="para-section" id="projectsSection">
+                        <h3 class="para-header" data-para="Projects">
+                            <svg class="collapse-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                            Projects
+                        </h3>
+                        <div class="para-list" id="projectsList"></div>
+                    </div>
+                    <div class="para-section" id="areasSection">
+                        <h3 class="para-header" data-para="Areas">
+                            <svg class="collapse-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                            Areas
+                        </h3>
+                        <div class="para-list" id="areasList"></div>
+                    </div>
+                    <div class="para-section" id="resourcesSection">
+                        <h3 class="para-header" data-para="Resources">
+                            <svg class="collapse-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                            Resources
+                        </h3>
+                        <div class="para-list" id="resourcesList"></div>
+                    </div>
+                    <div class="para-section" id="archivesSection">
+                        <h3 class="para-header" data-para="Archives">
+                            <svg class="collapse-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                            Archives
+                        </h3>
+                        <div class="para-list" id="archivesList"></div>
+                    </div>
+                    <div class="categories" id="categoriesSection">
+                    <h3 class="categories-header" id="categoriesHeader">
+                        <svg class="collapse-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                        Categories
+                    </h3>
+                    <div class="category-list" id="categoryList"></div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Calendar View -->
+            <main class="calendar-main">
+                <div class="week-header" id="weekHeader"></div>
+                <div class="time-grid-container">
+                    <div class="time-grid" id="timeGrid"></div>
+                </div>
+            </main>
+        </div>
+
+        <!-- FAB -->
+        <button class="fab" id="fabAdd" aria-label="Add event">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+            <span class="fab-badge" id="fabBadge" hidden></span>
+        </button>
+
+        <!-- Event detail popup (redesigned) -->
+        <div class="event-popup" id="eventPopup" hidden role="dialog" aria-labelledby="popupTitle" aria-modal="true">
+            <div class="event-popup-content">
+                <!-- Header -->
+                <header class="event-popup-header">
+                    <div class="event-popup-color" id="popupColor"></div>
+                    <div class="event-popup-info">
+                        <span class="event-popup-source" id="popupSourceBadge">Org Event</span>
+                        <h3><a id="popupTitle" href="#" target="_blank" rel="noopener">Event Title</a></h3>
+                    </div>
+                    <button class="event-popup-close" id="popupClose" aria-label="Close">&times;</button>
+                </header>
+                
+                <!-- Metadata -->
+                <section class="event-popup-meta">
+                    <div class="event-popup-meta-primary">
+                        <span class="event-popup-time" id="popupTime">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                            <span class="event-popup-time-value"></span>
+                        </span>
+                    </div>
+                    <div class="event-popup-meta-secondary">
+                        <span class="event-popup-category" id="popupCategoryLine">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 2l-5.5 9h11L12 2zm0 3.84L13.93 9h-3.87L12 5.84zM17.5 13c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 7c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zM3 21.5h8v-8H3v8zm2-6h4v4H5v-4z"/></svg>
+                            <span></span>
+                        </span>
+                        <span class="event-popup-parent" id="popupParentLine">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                            <span></span>
+                        </span>
+                    </div>
+                    <div class="event-popup-meta-tertiary" id="popupFileSection">
+                        <span class="event-popup-file" id="popupFileLine">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                            <span></span>
+                        </span>
+                        <button class="event-popup-open-emacs" id="popupOpen" title="Open in Emacs">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                            Open in Emacs
+                        </button>
+                    </div>
+                </section>
+                
+                <!-- Badges -->
+                <div class="event-popup-badges" id="popupBadges">
+                    <div class="priority-indicator" id="popupPriority" hidden>A</div>
+                    <span class="state-badge" id="popupState" hidden>TODO</span>
+                </div>
+                
+                <!-- Notes section with checkboxes -->
+                <section class="event-popup-notes" id="popupNotesSection" hidden>
+                    <div class="event-popup-notes-content" id="popupNotes"></div>
+                </section>
+                
+                <!-- ICS Notice -->
+                <div class="event-popup-notice" id="popupIcsNotice" hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                    <span>External calendar - edit in source app</span>
+                </div>
+                
+                <!-- Actions for Org Events -->
+                <div class="event-popup-actions" id="popupActionsOrg">
+                    <button class="action-btn success" id="popupMarkDone" title="Mark as Done">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                        <span>Done</span>
+                    </button>
+                    <button class="action-btn" id="popupCopy" title="Copy event details to clipboard">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        <span>Copy</span>
+                    </button>
+                    <button class="action-btn" id="popupSnooze" title="Snooze">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                        <span>Snooze</span>
+                    </button>
+                    <button class="action-btn primary" id="popupEdit" title="Edit">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                        <span>Edit</span>
+                    </button>
+                    <button class="action-btn danger" id="popupDelete" title="Delete">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        <span>Delete</span>
+                    </button>
+                </div>
+                
+                <!-- Actions for ICS Events -->
+                <div class="event-popup-actions event-popup-actions-ics" id="popupActionsIcs" hidden>
+                    <button class="action-btn success" id="popupIcsMarkDone" title="Mark as Done locally">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                        <span>Done</span>
+                    </button>
+                    <button class="action-btn" id="popupIcsCopy" title="Copy event details to clipboard">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        <span>Copy</span>
+                    </button>
+                    <button class="action-btn primary prominent" id="popupOpenCalendar" title="Open in Google Calendar">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                        <span>Open in Calendar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Snooze dropdown -->
+        <div class="snooze-dropdown" id="snoozeDropdown" hidden>
+            <button class="snooze-option" data-days="1">+1 day</button>
+            <button class="snooze-option" data-days="2">+2 days</button>
+            <button class="snooze-option" data-days="7">+1 week</button>
+            <button class="snooze-option" data-days="14">+2 weeks</button>
+        </div>
+
+        <!-- Create event modal -->
+        <div class="modal" id="createModal" hidden>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>New Event</h2>
+                    <button class="modal-close" id="createModalClose">&times;</button>
+                </div>
+                <form id="createForm">
+                    <div class="form-group">
+                        <label for="eventTitle">Title</label>
+                        <input type="text" id="eventTitle" required placeholder="Event title">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="eventDate">Date</label>
+                            <input type="date" id="eventDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="eventTime">Start</label>
+                            <input type="time" id="eventTime">
+                        </div>
+                        <div class="form-group">
+                            <label for="eventEndTime">End</label>
+                            <input type="time" id="eventEndTime">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="eventType">Type</label>
+                            <select id="eventType">
+                                <option value="scheduled">Scheduled</option>
+                                <option value="deadline">Deadline</option>
+                                <option value="timestamp">Timestamp</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="eventPriority">Priority</label>
+                            <select id="eventPriority">
+                                <option value="">None</option>
+                                <option value="A">High [A]</option>
+                                <option value="B">Medium [B]</option>
+                                <option value="C">Low [C]</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventNotes">Notes</label>
+                        <textarea id="eventNotes" rows="2" placeholder="Optional notes..."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" id="createCancel">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit event modal - Redesigned -->
+        <div class="modal" id="editModal" hidden>
+            <div class="modal-content edit-modal">
+                <!-- Header -->
+                <div class="edit-modal__header">
+                    <h2 class="edit-modal__title">Edit Event</h2>
+                    <button class="edit-modal__close" id="editModalClose" aria-label="Close">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <form id="editForm" class="edit-modal__form">
+                    <div class="edit-modal__content">
+                        <!-- Title -->
+                        <div class="edit-modal__field edit-modal__field--title">
+                            <input type="text" id="editTitle" class="edit-modal__input edit-modal__input--title" required placeholder="Event title" autocomplete="off">
+                        </div>
+                        
+                        <!-- State Section -->
+                        <div class="edit-modal__field">
+                            <label class="edit-modal__label" for="editState">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                                </svg>
+                                <span>State</span>
+                            </label>
+                            <select id="editState" class="edit-modal__select">
+                                <option value="">None</option>
+                                <option value="TODO">TODO</option>
+                                <option value="NEXT">NEXT</option>
+                                <option value="WAITING">WAITING</option>
+                                <option value="DONE">DONE</option>
+                            </select>
+                        </div>
+                        
+                        <!-- When Section -->
+                        <div class="edit-modal__section">
+                            <div class="edit-modal__section-label">When</div>
+                            <div class="edit-modal__datetime-row">
+                                <div class="edit-modal__field">
+                                    <label class="edit-modal__label" for="editDate">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+                                        <span>Date</span>
+                                    </label>
+                                    <input type="date" id="editDate" class="edit-modal__input" required>
+                                </div>
+                                <div class="edit-modal__field">
+                                    <label class="edit-modal__label" for="editTime">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                                        <span>Start</span>
+                                    </label>
+                                    <input type="time" id="editTime" class="edit-modal__input">
+                                </div>
+                                <div class="edit-modal__field">
+                                    <label class="edit-modal__label" for="editEndTime">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+                                        <span>End</span>
+                                    </label>
+                                    <input type="time" id="editEndTime" class="edit-modal__input">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Details Section -->
+                        <div class="edit-modal__section">
+                            <div class="edit-modal__section-label">Details</div>
+                            <div class="edit-modal__details-grid">
+                                <div class="edit-modal__field">
+                                    <label class="edit-modal__label" for="editType">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg>
+                                        <span>Type</span>
+                                    </label>
+                                    <select id="editType" class="edit-modal__select">
+                                        <option value="scheduled">Scheduled</option>
+                                        <option value="deadline">Deadline</option>
+                                        <option value="timestamp">Timestamp</option>
+                                    </select>
+                                </div>
+                                <div class="edit-modal__field">
+                                    <label class="edit-modal__label" for="editPriority">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+                                        <span>Priority</span>
+                                    </label>
+                                    <select id="editPriority" class="edit-modal__select">
+                                        <option value="">None</option>
+                                        <option value="A">A - High</option>
+                                        <option value="B">B - Medium</option>
+                                        <option value="C">C - Low</option>
+                                    </select>
+                                </div>
+                                <div class="edit-modal__field">
+                                    <label class="edit-modal__label" for="editCategory">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
+                                        <span>Category</span>
+                                    </label>
+                                    <select id="editCategory" class="edit-modal__select">
+                                        <option value="">Select...</option>
+                                    </select>
+                                </div>
+                                <div class="edit-modal__field">
+                                    <label class="edit-modal__label" for="editTags">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58.55 0 1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41 0-.55-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"/></svg>
+                                        <span>Tags</span>
+                                    </label>
+                                    <input type="text" id="editTags" class="edit-modal__input" placeholder="tag1, tag2">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Toggle Advanced -->
+                        <button type="button" class="edit-modal__toggle-advanced" id="editToggleAdvanced">
+                            <svg class="edit-modal__toggle-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/>
+                            </svg>
+                            <span class="edit-modal__toggle-text">More options</span>
+                        </button>
+                        
+                        <!-- Advanced Section -->
+                        <div class="edit-modal__advanced" id="editAdvanced" hidden>
+                            <div class="edit-modal__section">
+                                <div class="edit-modal__section-label">Advanced</div>
+                                
+                                <div class="edit-modal__field">
+                                    <label class="edit-modal__label" for="editLocation">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                                        <span>Location</span>
+                                    </label>
+                                    <input type="text" id="editLocation" class="edit-modal__input" placeholder="Add location">
+                                </div>
+                                
+                                <div class="edit-modal__field">
+                                    <label class="edit-modal__label" for="editRepeat">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/></svg>
+                                        <span>Repeat</span>
+                                    </label>
+                                    <select id="editRepeat" class="edit-modal__select">
+                                        <option value="">Don't repeat</option>
+                                        <option value="+1d">Daily</option>
+                                        <option value="+1w">Weekly</option>
+                                        <option value="+1m">Monthly</option>
+                                        <option value="+1y">Yearly</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="edit-modal__field">
+                                    <label class="edit-modal__label" for="editRefileInput">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6 10H6v-2h8v2zm4-4H6v-2h12v2z"/></svg>
+                                        <span>Refile to</span>
+                                    </label>
+                                    <div class="refile-combobox" id="refileCombobox">
+                                        <input type="text" id="editRefileInput" class="edit-modal__input" placeholder="Type to search..." autocomplete="off">
+                                        <input type="hidden" id="editRefile" value="">
+                                        <div class="refile-combobox__dropdown" id="refileDropdown" hidden>
+                                            <div class="refile-combobox__list" id="refileList"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="edit-modal__field edit-modal__field--notes">
+                                    <label class="edit-modal__label" for="editNotes">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                                        <span>Notes</span>
+                                    </label>
+                                    <textarea id="editNotes" class="edit-modal__textarea" rows="3" placeholder="Add notes..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div class="edit-modal__footer">
+                        <div class="edit-modal__file-info" id="editFileInfo">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                            <span id="editFileName">file.org</span>:<span id="editFileLine">123</span>
+                        </div>
+                        <div class="edit-modal__actions">
+                            <button type="button" class="edit-modal__btn edit-modal__btn--open" id="editOpen">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                                <span>Open</span>
+                            </button>
+                            <button type="submit" class="edit-modal__btn edit-modal__btn--save">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                <span>Save</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Settings modal -->
+        <div class="modal" id="settingsModal" hidden>
+            <div class="modal-content settings-modal">
+                <div class="modal-header">
+                    <h2>Settings</h2>
+                    <button class="modal-close" id="settingsModalClose">&times;</button>
+                </div>
+                
+                <!-- Tab Navigation -->
+                <div class="settings-tabs">
+                    <button class="settings-tab active" data-tab="display">Display</button>
+                    <button class="settings-tab" data-tab="filtering">Filtering</button>
+                    <button class="settings-tab" data-tab="calendars">Calendars</button>
+                    <button class="settings-tab" data-tab="availability">Availability</button>
+                    <button class="settings-tab" data-tab="colors">Colors</button>
+                </div>
+                
+                <div class="settings-content">
+                    <!-- Display Tab -->
+                    <div class="settings-tab-content active" id="settings-display">
+                        <div class="settings-section">
+                            <h3>View</h3>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Default View</span>
+                                    <span class="setting-desc">Which view to show when opening</span>
+                                </div>
+                                <select id="settingDefaultView">
+                                    <option value="week">Week</option>
+                                    <option value="day">Day</option>
+                                    <option value="agenda">Agenda</option>
+                                    <option value="month">Month (Rocks)</option>
+                                    <option value="year">Year (Heatmap)</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Time Format</span>
+                                    <span class="setting-desc">12-hour or 24-hour clock</span>
+                                </div>
+                                <select id="settingTimeFormat">
+                                    <option value="12">12-hour (3:00 PM)</option>
+                                    <option value="24">24-hour (15:00)</option>
+                                </select>
+                            </div>
+                            <div class="setting-item toggle">
+                                <div class="setting-label">
+                                    <span>Show Relative Time</span>
+                                    <span class="setting-desc">Display "in 2 hours", "tomorrow"</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settingShowRelativeTime" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>Appearance</h3>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Theme</span>
+                                    <span class="setting-desc">Color scheme for the interface</span>
+                                </div>
+                                <select id="settingTheme">
+                                    <option value="system">System (auto)</option>
+                                    <option value="dark">Dark</option>
+                                    <option value="light">Light</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Font Size</span>
+                                    <span class="setting-desc">Adjust overall font size</span>
+                                </div>
+                                <select id="settingFontScale">
+                                    <option value="0.85">Small (85%)</option>
+                                    <option value="0.9">Compact (90%)</option>
+                                    <option value="1.0">Normal (100%)</option>
+                                    <option value="1.1">Large (110%)</option>
+                                    <option value="1.2">Huge (120%)</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Display Density</span>
+                                    <span class="setting-desc">How compact or spacious the view appears</span>
+                                </div>
+                                <select id="settingDensity">
+                                    <option value="compact">Compact</option>
+                                    <option value="comfortable">Comfortable</option>
+                                    <option value="spacious">Spacious</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Event Colors</span>
+                                    <span class="setting-desc">How event blocks are colored</span>
+                                </div>
+                                <select id="settingEventColorStyle">
+                                    <option value="solid">Solid (pastel)</option>
+                                    <option value="transparent">Transparent</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>Time Range</h3>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Day Start Hour</span>
+                                    <span class="setting-desc">First hour shown in week/day view</span>
+                                </div>
+                                <div class="setting-slider">
+                                    <input type="range" id="settingStartHour" min="0" max="12" value="6">
+                                    <span class="range-value" id="startHourValue">6:00</span>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Day End Hour</span>
+                                    <span class="setting-desc">Last hour shown in week/day view</span>
+                                </div>
+                                <div class="setting-slider">
+                                    <input type="range" id="settingEndHour" min="18" max="24" value="22">
+                                    <span class="range-value" id="endHourValue">22:00</span>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Auto Refresh</span>
+                                    <span class="setting-desc">How often to refresh events</span>
+                                </div>
+                                <div class="setting-slider">
+                                    <input type="range" id="settingRefreshInterval" min="1" max="30" value="5">
+                                    <span class="range-value" id="refreshIntervalValue">5 min</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>Year at a Glance</h3>
+                            <p class="setting-desc" style="margin-bottom: 12px;">Customize the spreadsheet-style year view</p>
+                            
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Display Format</span>
+                                    <span class="setting-desc">How to show event with category</span>
+                                </div>
+                                <select id="settingYearGlanceFormat">
+                                    <option value="suffix">Title • Category</option>
+                                    <option value="prefix">[Category] Title</option>
+                                    <option value="tooltip">Title only (hover for details)</option>
+                                    <option value="twolines">Two lines</option>
+                                </select>
+                            </div>
+                            
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Column Width</span>
+                                    <span class="setting-desc">Width of month columns</span>
+                                </div>
+                                <select id="settingYearGlanceColumnWidth">
+                                    <option value="compact">Compact (120px)</option>
+                                    <option value="normal">Normal (160px)</option>
+                                    <option value="wide">Wide (200px)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Event Filter</span>
+                                    <span class="setting-desc">Which events qualify for display</span>
+                                </div>
+                                <select id="settingYearGlanceFilterPreset">
+                                    <option value="bigRocks">Big Rocks (≥3h or all-day)</option>
+                                    <option value="priorityOrRocks">Priority A or Big Rocks</option>
+                                    <option value="travelHoliday">Travel & Holidays</option>
+                                    <option value="allEvents">All Events</option>
+                                    <option value="custom">Custom Filter...</option>
+                                </select>
+                            </div>
+                            
+                            <div class="setting-item vertical" id="yearGlanceCustomFilterContainer" style="display: none;">
+                                <div class="setting-label">
+                                    <span>Custom Filter Expression</span>
+                                    <span class="setting-desc">Filter events shown in year view</span>
+                                </div>
+                                <input type="text" id="settingYearGlanceCustomFilter" class="setting-input" 
+                                       placeholder="duration >= 3h OR category IN (Travel, Holiday)">
+                                <div class="filter-help">
+                                    <details>
+                                        <summary>Filter syntax help</summary>
+                                        <div class="filter-help-content">
+                                            <p><strong>Fields:</strong> duration, priority, category, title, allday</p>
+                                            <p><strong>Operators:</strong> =, !=, >=, <=, >, <, IN, NOT IN, CONTAINS</p>
+                                            <p><strong>Logic:</strong> AND, OR (evaluated left to right)</p>
+                                            <p><strong>Examples:</strong></p>
+                                            <code>duration >= 3h</code><br>
+                                            <code>duration >= 2h OR priority = A</code><br>
+                                            <code>category IN (Travel, Holiday, Workshop)</code><br>
+                                            <code>category NOT IN (Birthday, Reminder)</code><br>
+                                            <code>title CONTAINS retreat</code><br>
+                                            <code>allday = true AND duration >= 1h</code>
+                                        </div>
+                                    </details>
+                                </div>
+                            </div>
+                            
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Color Style</span>
+                                    <span class="setting-desc">How to show category colors</span>
+                                </div>
+                                <select id="settingYearGlanceColorStyle">
+                                    <option value="background">Background tint</option>
+                                    <option value="border">Left border</option>
+                                    <option value="none">None</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>Event Creation</h3>
+                            <div class="setting-item vertical">
+                                <div class="setting-label">
+                                    <span>Capture File</span>
+                                    <span class="setting-desc">Org file for new events (leave empty for org-default-notes-file)</span>
+                                </div>
+                                <input type="text" id="settingCaptureFile" class="setting-input" placeholder="~/Documents/0Inbox/index.org">
+                            </div>
+                            <div class="setting-item vertical">
+                                <div class="setting-label">
+                                    <span>Capture Headline</span>
+                                    <span class="setting-desc">Headline under which to file new events</span>
+                                </div>
+                                <input type="text" id="settingCaptureHeadline" class="setting-input" placeholder="Inbox" value="Inbox">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filtering Tab -->
+                    <div class="settings-tab-content" id="settings-filtering">
+                        <div class="settings-section">
+                            <h3>Event Types</h3>
+                            <div class="setting-item toggle">
+                                <div class="setting-label">
+                                    <span>Show Scheduled</span>
+                                    <span class="setting-desc">Include SCHEDULED entries</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settingShowScheduled" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item toggle">
+                                <div class="setting-label">
+                                    <span>Show Deadlines</span>
+                                    <span class="setting-desc">Include DEADLINE entries</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settingShowDeadlines" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item toggle">
+                                <div class="setting-label">
+                                    <span>Show Timestamps</span>
+                                    <span class="setting-desc">Include plain timestamp entries</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settingShowTimestamps" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item toggle">
+                                <div class="setting-label">
+                                    <span>Show Google Calendar</span>
+                                    <span class="setting-desc">Include :org-gcal: events</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settingShowGcal" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>State Filtering</h3>
+                            <div class="setting-item toggle">
+                                <div class="setting-label">
+                                    <span>Show Completed</span>
+                                    <span class="setting-desc">Include events with DONE state</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settingShowCompleted">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Calendars Tab (ICS Feeds) -->
+                    <div class="settings-tab-content" id="settings-calendars">
+                        <div class="settings-section">
+                            <h3>External Calendars (ICS Feeds)</h3>
+                            <p class="settings-description">Add ICS/iCal URLs to display external calendars read-only. Get URL from: Google Calendar Settings → Integrate calendar → Secret address in iCal format</p>
+                            
+                            <div class="ics-calendars-list" id="icsCalendarsList">
+                                <!-- Populated dynamically -->
+                            </div>
+                            
+                            <div class="add-ics-form">
+                                <h4>Add New Calendar</h4>
+                                <div class="form-group">
+                                    <label for="icsCalendarName">Name</label>
+                                    <input type="text" id="icsCalendarName" placeholder="e.g., Family Calendar">
+                                </div>
+                                <div class="form-group">
+                                    <label for="icsCalendarUrl">ICS URL</label>
+                                    <input type="url" id="icsCalendarUrl" placeholder="https://calendar.google.com/calendar/ical/...">
+                                </div>
+                                <div class="form-group">
+                                    <label for="icsCalendarColor">Color</label>
+                                    <input type="color" id="icsCalendarColor" value="#89b4fa">
+                                </div>
+                                <button class="btn btn-primary" id="addIcsCalendarBtn">Add Calendar</button>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <h3>Timezone</h3>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Calendar Timezone</span>
+                                    <span class="setting-desc">Timezone for displaying ICS events (default: local)</span>
+                                </div>
+                                <select id="settingTimezone">
+                                    <option value="local">Local (Auto-detect)</option>
+                                    <option value="UTC">UTC</option>
+                                    <option value="America/New_York">Eastern (US)</option>
+                                    <option value="America/Chicago">Central (US)</option>
+                                    <option value="America/Denver">Mountain (US)</option>
+                                    <option value="America/Los_Angeles">Pacific (US)</option>
+                                    <option value="Europe/London">London</option>
+                                    <option value="Europe/Paris">Paris</option>
+                                    <option value="Europe/Berlin">Berlin</option>
+                                    <option value="Asia/Tokyo">Tokyo</option>
+                                    <option value="Asia/Shanghai">Shanghai</option>
+                                    <option value="Asia/Kolkata">India (IST)</option>
+                                    <option value="Australia/Sydney">Sydney</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>ICS Refresh Interval</span>
+                                    <span class="setting-desc">How often to fetch external calendar feeds</span>
+                                </div>
+                                <div class="setting-slider">
+                                    <input type="range" id="settingIcsRefreshInterval" min="5" max="60" value="15">
+                                    <span class="range-value" id="icsRefreshIntervalValue">15 min</span>
+                                </div>
+                            </div>
+                            <p class="settings-description" style="margin-top: 12px;">
+                                Use the <span style="color: var(--accent)">⏱</span> button on each calendar to include/exclude it from load calculations in Month/Year views.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Availability Tab -->
+                    <div class="settings-tab-content" id="settings-availability">
+                        <div class="settings-section">
+                            <h3>Big Rocks (Covey Method)</h3>
+                            <p class="settings-description">Configure how day load is calculated for Month and Year views.</p>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Rock Threshold</span>
+                                    <span class="setting-desc">Events >= this duration count as "Big Rocks"</span>
+                                </div>
+                                <div class="setting-slider">
+                                    <input type="range" id="settingRockThreshold" min="1" max="6" value="3">
+                                    <span class="range-value" id="rockThresholdValue">3h</span>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Heavy Day Threshold</span>
+                                    <span class="setting-desc">Days with >= this many hours marked "Heavy"</span>
+                                </div>
+                                <div class="setting-slider">
+                                    <input type="range" id="settingHeavyThreshold" min="4" max="10" value="6">
+                                    <span class="range-value" id="heavyThresholdValue">6h</span>
+                                </div>
+                            </div>
+                            <div class="setting-item toggle">
+                                <div class="setting-label">
+                                    <span>Weekends Available</span>
+                                    <span class="setting-desc">Include weekends in available periods</span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="settingWeekendsAvailable">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Min Consecutive Days</span>
+                                    <span class="setting-desc">Minimum days for an available period</span>
+                                </div>
+                                <select id="settingAvailableMinDays">
+                                    <option value="2">2 days</option>
+                                    <option value="3">3 days</option>
+                                    <option value="4">4 days</option>
+                                    <option value="5">5 days</option>
+                                    <option value="7">7 days</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Max Hours/Day</span>
+                                    <span class="setting-desc">Maximum hours to count day as available</span>
+                                </div>
+                                <select id="settingAvailableMaxHours">
+                                    <option value="0">0 hours (empty)</option>
+                                    <option value="1">1 hour</option>
+                                    <option value="2">2 hours</option>
+                                    <option value="3">3 hours</option>
+                                    <option value="4">4 hours</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="settings-section tips-section">
+                            <h3>Tips</h3>
+                            <ul class="tips-list">
+                                <li><kbd>W</kbd> Week <kbd>D</kbd> Day <kbd>M</kbd> Month <kbd>Y</kbd> Year</li>
+                                <li><kbd>T</kbd> Today <kbd>C</kbd> Create event <kbd>Esc</kbd> Close</li>
+                                <li><kbd>N</kbd> Next <kbd>P</kbd> Previous period</li>
+                                <li>Click day headers to switch to day view</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Colors Tab -->
+                    <div class="settings-tab-content" id="settings-colors">
+                        <div class="settings-section">
+                            <h3>Category Colors</h3>
+                            <p class="settings-description">Click a color swatch to change it. Categories are auto-detected from your events.</p>
+                            <div id="categoryColorList" class="category-color-list"></div>
+                            <div class="add-category-row">
+                                <input type="text" id="newCategoryInput" placeholder="Add custom category...">
+                                <button class="btn-add-category" id="addCategoryBtn">+</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-actions">
+                        <button class="btn btn-secondary" id="settingsReset">Reset to Defaults</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading overlay -->
+        <div class="loading-overlay" id="loadingOverlay" hidden>
+            <div class="spinner"></div>
+        </div>
+
+        <!-- Toast notifications -->
+        <div class="toast-container" id="toastContainer"></div>
+
+        <!-- Connection status -->
+        <div class="connection-status" id="connectionStatus" hidden>
+            <span class="status-dot"></span>
+            <span class="status-text">Disconnected from Emacs</span>
+            <button class="status-close" id="connectionStatusClose" aria-label="Dismiss">&times;</button>
+        </div>
+
+        <!-- Pending changes indicator -->
+        <div class="pending-changes-indicator" id="pendingChangesIndicator" hidden title="Changes pending sync when back online">
+            <span class="pending-icon">⏳</span>
+            <span class="pending-text">0 pending</span>
+        </div>
+
+        <!-- Keyboard shortcuts modal -->
+        <div class="modal" id="shortcutsModal" hidden>
+            <div class="modal-content shortcuts-modal">
+                <div class="modal-header">
+                    <h2>Keyboard Shortcuts</h2>
+                    <button class="modal-close" id="shortcutsModalClose">&times;</button>
+                </div>
+                <div class="shortcuts-content">
+                    <div class="shortcuts-section">
+                        <h3>Navigation</h3>
+                        <div class="shortcut-item"><kbd>P</kbd> <kbd>←</kbd> <span>Previous period</span></div>
+                        <div class="shortcut-item"><kbd>N</kbd> <kbd>→</kbd> <span>Next period</span></div>
+                        <div class="shortcut-item"><kbd>T</kbd> <span>Go to today</span></div>
+                    </div>
+                    <div class="shortcuts-section">
+                        <h3>Views</h3>
+                        <div class="shortcut-item"><kbd>W</kbd> <span>Week view</span></div>
+                        <div class="shortcut-item"><kbd>3</kbd> <span>3-day view</span></div>
+                        <div class="shortcut-item"><kbd>D</kbd> <span>Day view</span></div>
+                        <div class="shortcut-item"><kbd>M</kbd> <span>Month view</span></div>
+                        <div class="shortcut-item"><kbd>Y</kbd> <span>Year view</span></div>
+                        <div class="shortcut-item"><kbd>A</kbd> <span>Agenda view</span></div>
+                    </div>
+                    <div class="shortcuts-section">
+                        <h3>Actions</h3>
+                        <div class="shortcut-item"><kbd>C</kbd> <span>Create event</span></div>
+                        <div class="shortcut-item"><kbd>/</kbd> <span>Search</span></div>
+                        <div class="shortcut-item"><kbd>R</kbd> <span>Refresh events</span></div>
+                    </div>
+                    <div class="shortcuts-section">
+                        <h3>General</h3>
+                        <div class="shortcut-item"><kbd>?</kbd> <span>Show this help</span></div>
+                        <div class="shortcut-item"><kbd>Ctrl</kbd>+<kbd>P</kbd> <span>Command palette</span></div>
+                        <div class="shortcut-item"><kbd>Esc</kbd> <span>Close modal / popup</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Command palette -->
+        <div class="command-palette" id="commandPalette" hidden>
+            <div class="command-palette-content">
+                <input type="text" id="commandInput" placeholder="Type a command..." autocomplete="off">
+                <div class="command-list" id="commandList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

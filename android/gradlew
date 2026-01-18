@@ -1,0 +1,32 @@
+#!/bin/bash
+# Gradle wrapper - downloads and runs gradle
+
+GRADLE_VERSION="8.5"
+GRADLE_HOME="$HOME/.gradle/wrapper/dists/gradle-$GRADLE_VERSION"
+GRADLE_URL="https://services.gradle.org/distributions/gradle-$GRADLE_VERSION-bin.zip"
+
+# Check if gradle is already downloaded
+if [ ! -d "$GRADLE_HOME" ]; then
+    echo "Downloading Gradle $GRADLE_VERSION..."
+    mkdir -p "$HOME/.gradle/wrapper/dists"
+    cd "$HOME/.gradle/wrapper/dists"
+    wget -q --show-progress "$GRADLE_URL" -O gradle.zip
+    unzip -q gradle.zip
+    rm gradle.zip
+    echo "Gradle installed."
+fi
+
+# Set ANDROID_HOME if not set
+if [ -z "$ANDROID_HOME" ]; then
+    if [ -d "$HOME/Android/Sdk" ]; then
+        export ANDROID_HOME="$HOME/Android/Sdk"
+    else
+        echo "Error: ANDROID_HOME not set and Android SDK not found."
+        echo "Run ./setup-android-sdk.sh first."
+        exit 1
+    fi
+fi
+
+# Run gradle
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec "$GRADLE_HOME/bin/gradle" -p "$SCRIPT_DIR" "$@"
