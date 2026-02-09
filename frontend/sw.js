@@ -1,12 +1,19 @@
 // Service Worker for Org Calendar PWA
-const CACHE_NAME = 'org-calendar-v4';
+const CACHE_NAME = 'org-calendar-v13';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
     '/styles.css',
     '/app.js',
-    '/manifest.json'
+    '/manifest.json',
+    '/sw.js'
 ];
+
+// Debug logging
+const DEBUG = true;
+function log(...args) {
+    if (DEBUG) console.log('[SW]', ...args);
+}
 
 // IndexedDB for offline queue
 const DB_NAME = 'org-calendar-offline';
@@ -40,22 +47,37 @@ function openDB() {
 
 // Install - cache static assets
 self.addEventListener('install', (event) => {
+    log('Installing service worker, cache:', CACHE_NAME);
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => cache.addAll(STATIC_ASSETS))
-            .then(() => self.skipWaiting())
+            .then(cache => {
+                log('Caching static assets:', STATIC_ASSETS);
+                return cache.addAll(STATIC_ASSETS);
+            })
+            .then(() => {
+                log('Installation complete');
+                return self.skipWaiting();
+            })
+            .catch(err => {
+                console.error('[SW] Installation failed:', err);
+            })
     );
 });
 
 // Activate - clean up old caches
 self.addEventListener('activate', (event) => {
+    log('Activating service worker');
     event.waitUntil(
         caches.keys().then(keys => {
-            return Promise.all(
-                keys.filter(key => key !== CACHE_NAME)
-                    .map(key => caches.delete(key))
-            );
-        }).then(() => self.clients.claim())
+            const oldCaches = keys.filter(key => key !== CACHE_NAME);
+            if (oldCaches.length > 0) {
+                log('Removing old caches:', oldCaches);
+            }
+            return Promise.all(oldCaches.map(key => caches.delete(key)));
+        }).then(() => {
+            log('Claiming clients');
+            return self.clients.claim();
+        })
     );
 });
 
@@ -93,7 +115,27 @@ self.addEventListener('fetch', (event) => {
         return;
     }
     
-    // Static assets - cache first for speed, update cache in background
+    // For JS files, use network-first to ensure fresh code
+    if (url.pathname.endsWith('.js')) {
+        event.respondWith(
+            fetchWithTimeout(event.request, 3000)
+                .then(response => {
+                    if (response.ok) {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME)
+                            .then(cache => cache.put(event.request, clone));
+                    }
+                    return response;
+                })
+                .catch(() => {
+                    // Network failed, use cache
+                    return caches.match(event.request);
+                })
+        );
+        return;
+    }
+
+    // Other static assets - cache first for speed, update cache in background
     event.respondWith(
         caches.match(event.request)
             .then(cached => {
@@ -110,7 +152,7 @@ self.addEventListener('fetch', (event) => {
                         .catch(() => {}); // Ignore network errors for background update
                     return cached;
                 }
-                
+
                 // No cache, try network
                 return fetch(event.request)
                     .then(response => {

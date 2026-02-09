@@ -20,7 +20,8 @@ const state = {
     viewMode: null, // week, 3day, day, agenda, month, year - null means use defaultView from settings
     sidebarOpen: false,
     searchQuery: '',
-    isOffline: !navigator.onLine,
+    isOffline: true,  // Start as offline until server responds
+    serverOnline: false,  // Tracks actual server connectivity
     pendingEventsCount: 0,
     isDragging: false,  // Track drag operations
     // Project timeline mode
@@ -43,6 +44,7 @@ const defaultColors = [
 const paraConfig = {
     Inbox: { color: '#ffb74d', listId: 'inboxList', sectionId: 'inboxSection', icon: '📥' },
     Projects: { color: '#e57373', listId: 'projectsList', sectionId: 'projectsSection', icon: '🎯' },
+    Subprojects: { color: '#f06292', listId: 'subprojectsList', sectionId: 'subprojectsSection', icon: '📁' },
     Areas: { color: '#81c784', listId: 'areasList', sectionId: 'areasSection', icon: '🔄' },
     Resources: { color: '#64b5f6', listId: 'resourcesList', sectionId: 'resourcesSection', icon: '📚' },
     Archives: { color: '#90a4ae', listId: 'archivesList', sectionId: 'archivesSection', icon: '📦' }
@@ -59,23 +61,36 @@ const UNCATEGORIZED = '(Uncategorized)';
 // Helper to get PARA item key for an event
 function getParaItemKey(e) {
     const para = e.para || 'Other';
-    
+
     // Inbox events - group by parent or filename
     if (para === 'Inbox') {
         const key = e.parent || e.file?.split('/').pop()?.replace('.org', '') || 'Inbox Items';
         return `Inbox:${key}`;
     }
-    
+
+    // Area events: group by level-1 ancestor (matching renderParaFilters logic)
+    const tags = e.tags ? e.tags.toLowerCase().split(':').filter(t => t) : [];
+    const isArea = tags.includes('area') || para === 'Areas';
+    if (isArea) {
+        let areaName;
+        if (!e.parent) {
+            areaName = e.title;
+        } else {
+            areaName = e.parent.split('/')[0];
+        }
+        return areaName ? `Areas:${areaName}` : null;
+    }
+
     // Events not in any PARA folder - don't filter by PARA (let category handle it)
     if (para === 'Other') {
         return null;  // No PARA filtering for these
     }
-    
+
     // Events without parent - don't filter by PARA
     if (!e.parent) {
         return null;
     }
-    
+
     return `${para}:${e.parent}`;
 }
 
@@ -87,7 +102,7 @@ let todoKeywords = ['TODO', 'NEXT', 'WAITING', 'DONE', 'CANCELLED'];
 // Fetch todo keywords from Emacs
 async function fetchTodoKeywords() {
     try {
-        const response = await fetch(`${API_BASE}/api/todo-keywords`);
+        const response = await fetchWithTimeout(`${API_BASE}/api/todo-keywords`, {}, 5000);
         if (response.ok) {
             const data = await response.json();
             if (data.keywords && data.keywords.length > 0) {
@@ -124,6 +139,40 @@ function getWeekStart(date) {
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     return new Date(d.getFullYear(), d.getMonth(), diff);
+}
+
+// Special states/tags that indicate a project/area heading
+const PROJECT_STATES = ['PROJ', 'PROJECT', 'DISCUSSION', 'PROPOSAL', 'AREA'];
+const PROJECT_TAGS = ['proj', 'area', 'project'];
+
+// Check if an event is a project/area heading itself (by state or tag)
+function isProjectHeadingEvent(e) {
+    if (e.state && PROJECT_STATES.includes(e.state.toUpperCase())) {
+        return true;
+    }
+    if (e.tags) {
+        const eventTags = e.tags.toLowerCase().split(':').filter(t => t);
+        return eventTags.some(t => PROJECT_TAGS.includes(t));
+    }
+    return false;
+}
+
+// Get the project name for an event (either its own title if it's a project, or its parent)
+function getProjectNameForEvent(e, projectHeadingTitles) {
+    // If this event IS a project heading, use its own title
+    if (isProjectHeadingEvent(e)) {
+        return e.title;
+    }
+    // If parent is a known project heading, use it
+    if (projectHeadingTitles && projectHeadingTitles.has(e.parent)) {
+        return e.parent;
+    }
+    // If no project headings are defined, fall back to parent
+    if (!projectHeadingTitles || projectHeadingTitles.size === 0) {
+        return e.parent;
+    }
+    // Parent is not a project heading - return null to skip
+    return null;
 }
 
 function formatDate(date) {
@@ -510,7 +559,93 @@ function getCacheTimestamp() {
 }
 
 function isOnline() {
-    return navigator.onLine;
+    // Return true only if server is actually reachable
+    return state.serverOnline;
+}
+
+// Check if server is reachable (ping with short timeout)
+async function checkServerConnection() {
+    // If no network at all, definitely offline
+    if (!navigator.onLine) {
+        setServerStatus(false, 'No network connection');
+        return false;
+    }
+
+    try {
+        // Quick ping to server status endpoint
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        const response = await fetch(`${API_BASE}/status`, {
+            method: 'GET',
+            signal: controller.signal,
+            cache: 'no-store'
+        });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+            setServerStatus(true);
+            return true;
+        } else {
+            setServerStatus(false, 'Server error');
+            return false;
+        }
+    } catch (e) {
+        setServerStatus(false, 'Server unreachable');
+        return false;
+    }
+}
+
+// Update server online status and UI
+function setServerStatus(online, message = null) {
+    const wasOffline = state.isOffline;
+    state.serverOnline = online;
+    state.isOffline = !online;
+
+    if (online) {
+        showConnectionStatus(true);
+    } else {
+        showConnectionStatus(false, message || 'Offline - showing cached data');
+    }
+
+    // If we just came online, sync pending changes and refresh data
+    if (wasOffline && online) {
+        showToast('Connected to server', 'success');
+        syncOfflineEvents();
+        // Refresh events from server
+        loadEvents(true, false);
+    } else if (!wasOffline && !online) {
+        showToast('Server offline - using cached data', 'warning');
+    }
+
+    updateOfflineUI();
+}
+
+// Fetch with timeout - crucial for detecting unreachable servers
+async function fetchWithTimeout(url, options = {}, timeout = 8000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timeout - server unreachable');
+        }
+        throw error;
+    }
+}
+
+// Check if we have cached data available
+function hasCachedData() {
+    const cached = loadEventsFromCache();
+    return cached && Object.keys(cached).length > 0;
 }
 
 // ==================== Pending Changes Queue ====================
@@ -674,16 +809,17 @@ async function resetLocalData() {
 // ==================== API Calls ====================
 
 async function fetchEvents(startDate, endDate, refresh = false) {
-    // If offline, use cached data
+    // If offline, use cached data immediately
     if (!isOnline()) {
         console.log('Offline - using cached events');
         showConnectionStatus(false, 'Offline - showing cached data');
         return loadEventsFromCache();
     }
-    
+
     try {
         const url = `${API_BASE}/api/events?start_date=${startDate}&end_date=${endDate}&refresh=${refresh}`;
-        const response = await fetch(url);
+        // Use fetchWithTimeout to detect unreachable servers quickly (8 second timeout)
+        const response = await fetchWithTimeout(url, {}, 8000);
         if (!response.ok) {
             if (response.status === 503) {
                 showConnectionStatus(false, 'Emacs server not running');
@@ -731,7 +867,16 @@ async function fetchEvents(startDate, endDate, refresh = false) {
 
 async function fetchIcsEvents(startDate, endDate, calendars) {
     if (!calendars || calendars.length === 0) return {};
-    
+
+    // Deduplicate calendars by URL to prevent duplicate events
+    const seenUrls = new Set();
+    const uniqueCalendars = calendars.filter(cal => {
+        if (!cal.url || seenUrls.has(cal.url)) return false;
+        seenUrls.add(cal.url);
+        return true;
+    });
+    if (uniqueCalendars.length === 0) return {};
+
     // Determine timezone to use
     let timezone = settings.icsTimezone || 'local';
     if (timezone === 'local') {
@@ -740,22 +885,22 @@ async function fetchIcsEvents(startDate, endDate, calendars) {
     }
     
     try {
-        const response = await fetch(`${API_BASE}/api/ics/events`, {
+        const response = await fetchWithTimeout(`${API_BASE}/api/ics/events`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                calendars: calendars,
+                calendars: uniqueCalendars,
                 start_date: startDate,
                 end_date: endDate,
                 timezone: timezone
             })
-        });
-        
+        }, 10000); // 10 second timeout for ICS (may need to fetch external calendars)
+
         if (!response.ok) {
             console.warn('ICS fetch failed:', response.status);
             return {};
         }
-        
+
         const data = await response.json();
         if (data.errors && data.errors.length > 0) {
             console.warn('ICS fetch errors:', data.errors);
@@ -795,11 +940,11 @@ function saveIcsDoneEvents(doneEvents) {
 
 async function syncIcsDoneToServer(doneEvents) {
     try {
-        const response = await fetch(`${API_BASE}/api/settings`, {
+        const response = await fetchWithTimeout(`${API_BASE}/api/settings`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ icsDoneEvents: doneEvents })
-        });
+        }, 5000);
         if (response.ok) {
             console.log('ICS done events synced to server');
         }
@@ -810,7 +955,7 @@ async function syncIcsDoneToServer(doneEvents) {
 
 async function loadIcsDoneFromServer() {
     try {
-        const response = await fetch(`${API_BASE}/api/settings`);
+        const response = await fetchWithTimeout(`${API_BASE}/api/settings`, {}, 5000);
         if (response.ok) {
             const serverSettings = await response.json();
             const serverDone = serverSettings.icsDoneEvents || {};
@@ -922,21 +1067,39 @@ function cleanupOldIcsDoneEvents() {
 
 function mergeEvents(orgEvents, icsEvents) {
     const merged = { ...orgEvents };
-    
+
     for (const [dateKey, events] of Object.entries(icsEvents)) {
         if (!merged[dateKey]) {
             merged[dateKey] = [];
         }
-        // Mark ICS events and check done status
-        const markedEvents = events.map(e => ({
-            ...e,
-            readOnly: true,
-            source: 'ics',
-            icsDone: isIcsEventDone(e, dateKey)
-        }));
+
+        // Create a set of existing ICS event keys for deduplication
+        const existingIcsKeys = new Set(
+            merged[dateKey]
+                .filter(e => e.source === 'ics')
+                .map(e => `${e.time || 'allday'}:${e.title}:${e.ics_calendar || e.calendarName || ''}`)
+        );
+
+        // Mark ICS events and check done status, filtering out duplicates
+        const markedEvents = events
+            .map(e => ({
+                ...e,
+                readOnly: true,
+                source: 'ics',
+                icsDone: isIcsEventDone(e, dateKey)
+            }))
+            .filter(e => {
+                const key = `${e.time || 'allday'}:${e.title}:${e.ics_calendar || e.calendarName || ''}`;
+                if (existingIcsKeys.has(key)) {
+                    return false; // Skip duplicate
+                }
+                existingIcsKeys.add(key);
+                return true;
+            });
+
         merged[dateKey] = merged[dateKey].concat(markedEvents);
     }
-    
+
     return merged;
 }
 
@@ -1471,7 +1634,7 @@ function renderCategories() {
     });
 }
 
-// Render PARA sections (Inbox, Projects, Areas, Resources, Archives, Uncategorized)
+// Render PARA sections (Inbox, Projects, Subprojects, Areas, Resources, Archives, Uncategorized)
 // Each section shows Level 1 headings (parent) that have events
 function renderParaFilters() {
     // Group events by PARA type and parent (Level 1 heading)
@@ -1479,32 +1642,119 @@ function renderParaFilters() {
     const paraData = {
         Inbox: {},
         Projects: {},
+        Subprojects: {},
         Areas: {},
         Resources: {},
         Archives: {}
     };
-    
+
+    // Special states that indicate a project heading (not inherited)
+    const projectStates = ['PROJ', 'PROJECT', 'DISCUSSION', 'PROPOSAL'];
+
+    // Helper to get tags from event (returns lowercase array)
+    const getEventTags = (e) => {
+        if (!e.tags) return [];
+        return e.tags.toLowerCase().split(':').filter(t => t);
+    };
+
+    // Check if event has a specific tag (case-insensitive)
+    const hasTag = (e, tagName) => {
+        const tags = getEventTags(e);
+        return tags.includes(tagName.toLowerCase());
+    };
+
+    // Check if an event is a project heading itself (from Projects folder)
+    const isProjectHeading = (e) => {
+        // Check state
+        if (e.state && projectStates.includes(e.state.toUpperCase())) {
+            return true;
+        }
+        // Check for proj tag
+        return hasTag(e, 'proj');
+    };
+
+    // Check if event is a subproject (has :Project: tag)
+    const isSubproject = (e) => hasTag(e, 'project');
+
+    // Check if event is an area heading (has :Area: tag - direct, not inherited)
+    const isAreaHeading = (e) => hasTag(e, 'area');
+
+    // First pass: collect all project heading titles
+    const projectHeadingTitles = new Set();
+    Object.values(state.events).forEach(dayEvents => {
+        dayEvents.forEach(e => {
+            if (!passesSettingsFilters(e)) return;
+            if (isProjectHeading(e) && e.title) {
+                projectHeadingTitles.add(e.title);
+            }
+        });
+    });
+
     // Count events per parent within each PARA type
     Object.values(state.events).forEach(dayEvents => {
         dayEvents.forEach(e => {
             // Skip events that don't pass settings filters
             if (!passesSettingsFilters(e)) return;
-            
+
             const para = e.para || 'Other';
-            
+
             // Handle Inbox events - group by parent or filename
             if (para === 'Inbox') {
                 const key = e.parent || e.file?.split('/').pop()?.replace('.org', '') || 'Inbox Items';
                 paraData.Inbox[key] = (paraData.Inbox[key] || 0) + 1;
                 return;
             }
-            
-            // Skip events not in PARA folders or without parent
-            if (para === 'Other' || !e.parent) return;
-            
-            // Normal PARA items (Projects, Areas, Resources, Archives)
+
+            // Check for Subprojects first (events with :Project: tag anywhere)
+            if (isSubproject(e)) {
+                const name = e.title || e.parent;
+                if (name) {
+                    paraData.Subprojects[name] = (paraData.Subprojects[name] || 0) + 1;
+                }
+                return;
+            }
+
+            // Check for Areas: an area is a level-1 heading tagged :Area:
+            // Events may inherit the :Area: tag from their level-1 parent,
+            // so group them by the level-1 ancestor heading name.
+            if (isAreaHeading(e) || para === 'Areas') {
+                let areaName;
+                if (!e.parent) {
+                    // This event IS a level-1 heading (no ancestors)
+                    areaName = e.title;
+                } else {
+                    // Get the level-1 ancestor (first component of outline path)
+                    areaName = e.parent.split('/')[0];
+                }
+                if (areaName) {
+                    paraData.Areas[areaName] = (paraData.Areas[areaName] || 0) + 1;
+                }
+                return;
+            }
+
+            // Skip events not in PARA folders (for Projects, Resources, Archives)
+            if (para === 'Other') return;
+
+            // Use parent heading name
+            let projectName = e.parent;
+
+            // If this event IS a project heading, use its own title
+            if (isProjectHeading(e)) {
+                projectName = e.title;
+            }
+            // If parent is not a known project heading and we have project headings,
+            // try to find a matching project heading for this event
+            else if (projectHeadingTitles.size > 0 && !projectHeadingTitles.has(e.parent)) {
+                // Skip - this event's parent is not a project heading
+                // (it's probably a subtask under a non-project heading)
+                return;
+            }
+
+            if (!projectName) return;
+
+            // Normal PARA items (Projects, Resources, Archives)
             if (!paraData[para]) return;
-            paraData[para][e.parent] = (paraData[para][e.parent] || 0) + 1;
+            paraData[para][projectName] = (paraData[para][projectName] || 0) + 1;
         });
     });
     
@@ -1606,23 +1856,44 @@ function renderParaFilters() {
 
 // Open project timeline view showing all events for a specific PARA item
 async function openProjectTimeline(paraType, parent) {
+    // Build set of project heading titles for matching
+    const projectHeadingTitles = new Set();
+    Object.values(state.events || {}).forEach(dayEvents => {
+        dayEvents.forEach(e => {
+            if (isProjectHeadingEvent(e) && e.title) {
+                projectHeadingTitles.add(e.title);
+            }
+        });
+    });
+
     // Helper to find events for this project in current state
     function findProjectEvents() {
         let minDate = null;
         let maxDate = null;
         let eventCount = 0;
-        
+
         Object.entries(state.events || {}).forEach(([dateKey, dayEvents]) => {
             dayEvents.forEach(e => {
-                if (e.para === paraType && e.parent === parent) {
-                    eventCount++;
-                    const date = new Date(dateKey);
-                    if (!minDate || date < minDate) minDate = date;
-                    if (!maxDate || date > maxDate) maxDate = date;
+                // For Areas, match by tag or PARA folder (same logic as renderParaFilters)
+                if (paraType === 'Areas') {
+                    const tags = e.tags ? e.tags.toLowerCase().split(':').filter(t => t) : [];
+                    const isArea = tags.includes('area') || e.para === 'Areas';
+                    if (!isArea) return;
+                    const areaName = !e.parent ? e.title : e.parent.split('/')[0];
+                    if (areaName !== parent) return;
+                } else {
+                    if (e.para !== paraType) return;
+                    // Match by project name (using same logic as renderParaFilters)
+                    const projectName = getProjectNameForEvent(e, projectHeadingTitles);
+                    if (projectName !== parent) return;
                 }
+                eventCount++;
+                const date = new Date(dateKey);
+                if (!minDate || date < minDate) minDate = date;
+                if (!maxDate || date > maxDate) maxDate = date;
             });
         });
-        
+
         return { minDate, maxDate, eventCount };
     }
     
@@ -1937,9 +2208,7 @@ function updateSelectionUI() {
 async function bulkMarkDone() {
     const count = state.selectedEvents.size;
     if (count === 0) return;
-    
-    if (!confirm(`Mark ${count} event${count > 1 ? 's' : ''} as done?`)) return;
-    
+
     showLoading(true);
     let successCount = 0;
     
@@ -2004,7 +2273,7 @@ function renderWeekHeader() {
         
         html += `<div class="all-day-cell" data-date="${dateKey}">`;
         allDayEvents.forEach(event => {
-            const color = getColorForCategory(event.category);
+            const color = event.color || getColorForCategory(event.category);
             const idx = (state.events[dateKey] || []).indexOf(event);
             const icsClass = event.source === 'ics' ? 'ics-event' : '';
             const icsDoneClass = event.icsDone ? 'ics-done' : '';
@@ -2038,20 +2307,32 @@ function renderWeekHeader() {
     header.querySelectorAll('.all-day-event').forEach(el => {
         const dateKey = el.dataset.date;
         const idx = parseInt(el.dataset.eventIdx);
-        
-        // Long press detection
+
+        // Long press detection with movement tolerance
         let pressTimer;
-        
+        let touchStartX, touchStartY;
+        const MOVE_TOLERANCE = 15;
+
         el.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
             pressTimer = setTimeout(() => {
                 enterSelectionMode(dateKey, idx);
                 if (navigator.vibrate) navigator.vibrate(50);
             }, 500);
         }, { passive: true });
-        
+
         el.addEventListener('touchend', () => clearTimeout(pressTimer));
-        el.addEventListener('touchmove', () => clearTimeout(pressTimer));
-        
+        el.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            const dx = Math.abs(touch.clientX - touchStartX);
+            const dy = Math.abs(touch.clientY - touchStartY);
+            if (dx > MOVE_TOLERANCE || dy > MOVE_TOLERANCE) {
+                clearTimeout(pressTimer);
+            }
+        }, { passive: true });
+
         el.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             enterSelectionMode(dateKey, idx);
@@ -2059,21 +2340,21 @@ function renderWeekHeader() {
 
         el.addEventListener('click', (e) => {
             e.stopPropagation();
-            
+
             if (state.selectionMode) {
                 toggleSelection(dateKey, idx);
                 return;
             }
-            
+
             const event = state.events[dateKey][idx];
             showEventPopup(event, dateKey, e.clientX, e.clientY);
         });
-        
+
         if (state.selectedEvents.has(`${dateKey}:${idx}`)) {
             el.classList.add('selected');
         }
     });
-    
+
     const endDate = new Date(state.weekStart);
     endDate.setDate(endDate.getDate() + 6);
     document.getElementById('dateTitle').textContent = formatDateTitle(state.weekStart, endDate);
@@ -2112,7 +2393,7 @@ function render3DayHeader() {
         
         html += `<div class="all-day-cell" data-date="${dateKey}">`;
         allDayEvents.forEach(event => {
-            const color = getColorForCategory(event.category);
+            const color = event.color || getColorForCategory(event.category);
             const idx = (state.events[dateKey] || []).indexOf(event);
             const icsClass = event.source === 'ics' ? 'ics-event' : '';
             const icsDoneClass = event.icsDone ? 'ics-done' : '';
@@ -2146,20 +2427,32 @@ function render3DayHeader() {
     header.querySelectorAll('.all-day-event').forEach(el => {
         const dateKey = el.dataset.date;
         const idx = parseInt(el.dataset.eventIdx);
-        
-        // Long press detection
+
+        // Long press detection with movement tolerance
         let pressTimer;
-        
+        let touchStartX, touchStartY;
+        const MOVE_TOLERANCE = 15;
+
         el.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
             pressTimer = setTimeout(() => {
                 enterSelectionMode(dateKey, idx);
                 if (navigator.vibrate) navigator.vibrate(50);
             }, 500);
         }, { passive: true });
-        
+
         el.addEventListener('touchend', () => clearTimeout(pressTimer));
-        el.addEventListener('touchmove', () => clearTimeout(pressTimer));
-        
+        el.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            const dx = Math.abs(touch.clientX - touchStartX);
+            const dy = Math.abs(touch.clientY - touchStartY);
+            if (dx > MOVE_TOLERANCE || dy > MOVE_TOLERANCE) {
+                clearTimeout(pressTimer);
+            }
+        }, { passive: true });
+
         el.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             enterSelectionMode(dateKey, idx);
@@ -2167,21 +2460,21 @@ function render3DayHeader() {
 
         el.addEventListener('click', (e) => {
             e.stopPropagation();
-            
+
             if (state.selectionMode) {
                 toggleSelection(dateKey, idx);
                 return;
             }
-            
+
             const event = state.events[dateKey][idx];
             showEventPopup(event, dateKey, e.clientX, e.clientY);
         });
-        
+
         if (state.selectedEvents.has(`${dateKey}:${idx}`)) {
             el.classList.add('selected');
         }
     });
-    
+
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + 2);
     document.getElementById('dateTitle').textContent = formatDateTitle(startDate, endDate);
@@ -2196,7 +2489,8 @@ function renderTimeGrid(preserveScroll = true) {
     const container = document.querySelector('.time-grid-container');
     const startHour = settings?.startHour ?? 6;
     const endHour = settings?.endHour ?? 22;
-    const hourHeight = settings?.hourHeight ?? 60;
+    const densityMapLocal = { 'compact': 40, 'comfortable': 60, 'spacious': 80 };
+    const hourHeight = settings?.hourHeightPx || densityMapLocal[settings?.density] || 60;
     
     // Save scroll position before re-render
     const savedScrollTop = container?.scrollTop || 0;
@@ -2256,7 +2550,7 @@ function renderTimeGrid(preserveScroll = true) {
             
             const top = (startHourPos - startHour) * hourHeight;
             const height = Math.max((endHourPos - startHourPos) * hourHeight, 20);
-            const color = getColorForCategory(event.category);
+            const color = event.color || getColorForCategory(event.category);
             const bgColor = getEventBackground(color);
             const textColor = getEventTextColor(color);
             const width = totalColumns > 1 ? `calc(${100 / totalColumns}% - 4px)` : 'calc(100% - 4px)';
@@ -2285,25 +2579,37 @@ function renderTimeGrid(preserveScroll = true) {
     
     grid.innerHTML = timeCol + dayCols;
     grid.style.minHeight = `${(endHour - startHour + 1) * hourHeight}px`;
-    
+
     // Event handlers
     grid.querySelectorAll('.event').forEach(el => {
         const dateKey = el.dataset.date;
         const idx = parseInt(el.dataset.eventIdx);
-        
-        // Long press detection
+
+        // Long press detection with movement tolerance
         let pressTimer;
-        
+        let touchStartX, touchStartY;
+        const MOVE_TOLERANCE = 15;
+
         el.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
             pressTimer = setTimeout(() => {
                 enterSelectionMode(dateKey, idx);
                 if (navigator.vibrate) navigator.vibrate(50);
             }, 500);
         }, { passive: true });
-        
+
         el.addEventListener('touchend', () => clearTimeout(pressTimer));
-        el.addEventListener('touchmove', () => clearTimeout(pressTimer));
-        
+        el.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            const dx = Math.abs(touch.clientX - touchStartX);
+            const dy = Math.abs(touch.clientY - touchStartY);
+            if (dx > MOVE_TOLERANCE || dy > MOVE_TOLERANCE) {
+                clearTimeout(pressTimer);
+            }
+        }, { passive: true });
+
         el.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             enterSelectionMode(dateKey, idx);
@@ -2312,20 +2618,20 @@ function renderTimeGrid(preserveScroll = true) {
         el.addEventListener('click', (e) => {
             e.stopPropagation();
             hideEventTooltip();
-            
+
             if (state.selectionMode) {
                 toggleSelection(dateKey, idx);
                 return;
             }
-            
+
             const event = state.events[dateKey][idx];
             showEventPopup(event, dateKey, e.clientX, e.clientY);
         });
-        
+
         if (state.selectedEvents.has(`${dateKey}:${idx}`)) {
             el.classList.add('selected');
         }
-        
+
         // Tooltip on hover
         el.addEventListener('mouseenter', (e) => {
             const dateKey = el.dataset.date;
@@ -2452,11 +2758,11 @@ function renderTimeGrid(preserveScroll = true) {
             }
         });
         
-        col.addEventListener('drop', async (e) => {
+        col.addEventListener('drop', (e) => {
             e.preventDefault();
             dragCounter = 0;
             col.classList.remove('drag-over');
-            
+
             // Get the drop time from indicator
             let newTime = null;
             if (timeIndicator) {
@@ -2466,36 +2772,68 @@ function renderTimeGrid(preserveScroll = true) {
                 timeIndicator.remove();
                 timeIndicator = null;
             }
-            
+
             try {
                 const data = JSON.parse(e.dataTransfer.getData('text/plain'));
                 const newDate = col.dataset.date;
-                
+
                 // Find the event by file+line (unique identifier)
                 const events = state.events[data.date] || [];
                 const event = events.find(e => e.file === data.file && e.line === data.line);
-                
+
                 if (!event) {
                     console.warn('Could not find event to reschedule:', data);
                     showToast('Event not found - please refresh', 'error');
                     return;
                 }
-                
+
                 // Don't allow dragging ICS events
                 if (event.source === 'ics') {
                     showToast('External calendar events cannot be moved', 'warning');
                     return;
                 }
-                
+
                 // Skip if same date AND same time (or no time change)
                 const sameDate = data.date === newDate;
                 const sameTime = !newTime || newTime === event.time;
                 if (sameDate && sameTime) return;
-                
-                showToast('Rescheduling...', 'info');
-                if (await rescheduleEvent(event, newDate, newTime)) {
-                    await loadEvents(true, false);
+
+                // Optimistic update: move event in state immediately
+                const oldDate = data.date;
+                const oldTime = event.time;
+
+                // Remove from old date
+                if (state.events[oldDate]) {
+                    state.events[oldDate] = state.events[oldDate].filter(e => e !== event);
                 }
+
+                // Update event fields
+                event.date = newDate;
+                if (newTime) event.time = newTime;
+
+                // Add to new date
+                if (!state.events[newDate]) state.events[newDate] = [];
+                state.events[newDate].push(event);
+
+                // Re-render immediately for instant feedback
+                renderView();
+
+                // API call in background
+                rescheduleEvent(event, newDate, newTime).then(success => {
+                    if (success) {
+                        loadEvents(true, false);  // Sync with server
+                    } else {
+                        // Revert optimistic update on failure
+                        if (state.events[newDate]) {
+                            state.events[newDate] = state.events[newDate].filter(e => e !== event);
+                        }
+                        event.date = oldDate;
+                        event.time = oldTime;
+                        if (!state.events[oldDate]) state.events[oldDate] = [];
+                        state.events[oldDate].push(event);
+                        renderView();
+                    }
+                });
             } catch (err) {
                 console.error('Drop error:', err);
                 showToast('Failed to move event', 'error');
@@ -2549,10 +2887,21 @@ function renderAgendaView(shouldScroll = false) {
         
         // In timeline mode, filter to only show events from this project
         if (isTimelineMode) {
-            dayEvents = dayEvents.filter(e => 
-                e.para === state.timelineMode.paraType && 
-                e.parent === state.timelineMode.parent
-            );
+            // Build set of project heading titles for matching
+            const projectHeadingTitles = new Set();
+            Object.values(state.events || {}).forEach(de => {
+                de.forEach(ev => {
+                    if (isProjectHeadingEvent(ev) && ev.title) {
+                        projectHeadingTitles.add(ev.title);
+                    }
+                });
+            });
+
+            dayEvents = dayEvents.filter(e => {
+                if (e.para !== state.timelineMode.paraType) return false;
+                const projectName = getProjectNameForEvent(e, projectHeadingTitles);
+                return projectName === state.timelineMode.parent;
+            });
         }
         
         dayEvents.forEach((e, originalIdx) => {
@@ -2714,25 +3063,38 @@ function renderAgendaView(shouldScroll = false) {
         const displayDate = state.selectedDate || today;
         document.getElementById('dateTitle').textContent = `Agenda - ${months[displayDate.getMonth()]} ${displayDate.getFullYear()}`;
     }
-    
+
     // Event click handlers
     document.querySelectorAll('.agenda-event').forEach(el => {
         const dateKey = el.dataset.date;
         const idx = parseInt(el.dataset.idx);
-        
-        // Long press detection
+
+        // Long press detection with movement tolerance
         let pressTimer;
-        
+        let touchStartX, touchStartY;
+        const MOVE_TOLERANCE = 15; // pixels - allow small finger movements
+
         el.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
             pressTimer = setTimeout(() => {
                 enterSelectionMode(dateKey, idx);
                 if (navigator.vibrate) navigator.vibrate(50);
             }, 500);
         }, { passive: true });
-        
+
         el.addEventListener('touchend', () => clearTimeout(pressTimer));
-        el.addEventListener('touchmove', () => clearTimeout(pressTimer));
-        
+        el.addEventListener('touchmove', (e) => {
+            // Only cancel if finger moved significantly (> tolerance)
+            const touch = e.touches[0];
+            const dx = Math.abs(touch.clientX - touchStartX);
+            const dy = Math.abs(touch.clientY - touchStartY);
+            if (dx > MOVE_TOLERANCE || dy > MOVE_TOLERANCE) {
+                clearTimeout(pressTimer);
+            }
+        }, { passive: true });
+
         el.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             enterSelectionMode(dateKey, idx);
@@ -2743,7 +3105,7 @@ function renderAgendaView(shouldScroll = false) {
                 toggleSelection(dateKey, idx);
                 return;
             }
-            
+
             const events = state.events[dateKey];
             if (events && idx >= 0 && idx < events.length) {
                 showEventPopup(events[idx], dateKey, e.clientX, e.clientY);
@@ -2830,7 +3192,7 @@ function renderSearchResults() {
                     </div>
                     <div class="agenda-events">
                         ${events.map(e => {
-                            const color = getColorForCategory(e.category);
+                            const color = e.color || getColorForCategory(e.category);
                             const stateClass = e.state ? e.state.toLowerCase() : '';
                             return `
                                 <div class="agenda-event ${stateClass}" data-date="${e.dateKey}" data-idx="${e.idx}">
@@ -2852,25 +3214,38 @@ function renderSearchResults() {
     document.getElementById('weekHeader').innerHTML = '';
     document.getElementById('timeGrid').innerHTML = html;
     document.getElementById('dateTitle').textContent = `Search: ${state.searchQuery}`;
-    
+
     // Event click handlers
     document.querySelectorAll('.agenda-event').forEach(el => {
         const dateKey = el.dataset.date;
         const idx = parseInt(el.dataset.idx);
-        
-        // Long press detection
+
+        // Long press detection with movement tolerance
         let pressTimer;
-        
+        let touchStartX, touchStartY;
+        const MOVE_TOLERANCE = 15; // pixels - allow small finger movements
+
         el.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
             pressTimer = setTimeout(() => {
                 enterSelectionMode(dateKey, idx);
                 if (navigator.vibrate) navigator.vibrate(50);
             }, 500);
         }, { passive: true });
-        
+
         el.addEventListener('touchend', () => clearTimeout(pressTimer));
-        el.addEventListener('touchmove', () => clearTimeout(pressTimer));
-        
+        el.addEventListener('touchmove', (e) => {
+            // Only cancel if finger moved significantly (> tolerance)
+            const touch = e.touches[0];
+            const dx = Math.abs(touch.clientX - touchStartX);
+            const dy = Math.abs(touch.clientY - touchStartY);
+            if (dx > MOVE_TOLERANCE || dy > MOVE_TOLERANCE) {
+                clearTimeout(pressTimer);
+            }
+        }, { passive: true });
+
         el.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             enterSelectionMode(dateKey, idx);
@@ -2881,7 +3256,7 @@ function renderSearchResults() {
                 toggleSelection(dateKey, idx);
                 return;
             }
-            
+
             if (idx >= 0 && state.events[dateKey]) {
                 showEventPopup(state.events[dateKey][idx], dateKey, e.clientX, e.clientY);
             }
@@ -3568,6 +3943,8 @@ function getYearGlanceFilter() {
         case 'bigRocks':
             // Events >= rockThreshold hours OR all-day events
             return (event) => {
+                // Exclude deadlines from big rocks unless setting is enabled
+                if (event.type === 'deadline' && !settings.deadlinesAsBigRocks) return false;
                 const duration = getEventDuration(event);
                 const isAllDay = !!(event.all_day || event.allDay || !event.time);
                 return duration >= rockThreshold || isAllDay;
@@ -3804,6 +4181,9 @@ function renderYearView() {
     const heatmapData = [];
     const startDate = new Date(year, 0, 1);
     const endDate = new Date(year, 11, 31);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayKey = formatDate(today);
     
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
         const dateKey = formatDate(d);
@@ -3866,7 +4246,8 @@ function renderYearView() {
             date: new Date(d),
             dateKey,
             level,
-            hours: dayHours
+            hours: dayHours,
+            isPast: d < today
         });
     }
     
@@ -3880,6 +4261,28 @@ function renderYearView() {
         });
     }
     
+    // Filter available periods: remove past, adjust overlapping ones
+    const futureAvailablePeriods = [];
+    for (const p of availablePeriods) {
+        if (p.end < today) continue; // Entirely in the past
+        if (p.start < today) {
+            // Adjust start to today, recalculate days
+            const adjustedStart = new Date(today);
+            const daysDiff = Math.round((p.end - adjustedStart) / (1000 * 60 * 60 * 24)) + 1;
+            if (daysDiff >= (settings?.availableMinDays ?? 3)) {
+                futureAvailablePeriods.push({ start: adjustedStart, end: p.end, days: daysDiff });
+            }
+        } else {
+            futureAvailablePeriods.push(p);
+        }
+    }
+
+    // Recalculate future available days for stats
+    let futureAvailableDays = 0;
+    for (const item of heatmapData) {
+        if (!item.isPast && item.level === 0) futureAvailableDays++;
+    }
+
     // Initialize year view mode if not set
     if (!state.yearViewMode) state.yearViewMode = 'heatmap';
     
@@ -3951,7 +4354,7 @@ function renderYearView() {
         weeks.forEach(week => {
             const day = week[row];
             if (day) {
-                gridHtml += `<div class="heatmap-cell level-${day.level}" data-date="${day.dateKey}" title="${day.dateKey}: ${Math.round(day.hours)}h"></div>`;
+                gridHtml += `<div class="heatmap-cell level-${day.level}${day.isPast ? ' past' : ''}" data-date="${day.dateKey}" title="${day.dateKey}: ${Math.round(day.hours)}h"></div>`;
             } else {
                 gridHtml += '<div class="heatmap-cell empty"></div>';
             }
@@ -3970,7 +4373,7 @@ function renderYearView() {
                 <div class="stat-label">Total Hours</div>
             </div>
             <div class="stat-card stat-available">
-                <div class="stat-value">${availableDays}</div>
+                <div class="stat-value">${futureAvailableDays}</div>
                 <div class="stat-label">Available Days</div>
             </div>
             <div class="stat-card stat-travel">
@@ -3987,7 +4390,7 @@ function renderYearView() {
     // Available periods
     const dispMinDays = settings?.availableMinDays ?? 3;
     const dispMaxHours = settings?.availableMaxHours ?? 2;
-    if (availablePeriods.length > 0) {
+    if (futureAvailablePeriods.length > 0) {
         gridHtml += `
             <div class="year-periods">
                 <div class="periods-header">
@@ -3995,13 +4398,12 @@ function renderYearView() {
                     <span>Available Periods (${dispMinDays}+ consecutive days with ≤${dispMaxHours}h/day)</span>
                 </div>
                 <div class="periods-list">
-                    ${availablePeriods.slice(0, 5).map(p => {
+                    ${futureAvailablePeriods.slice(0, 5).map(p => {
                         const startStr = `${months[p.start.getMonth()]} ${p.start.getDate()}`;
                         const endStr = `${months[p.end.getMonth()]} ${p.end.getDate()}`;
                         return `<button class="period-btn" data-start="${formatDate(p.start)}">${startStr} - ${endStr} (${p.days}d)</button>`;
                     }).join('')}
                 </div>
-                <div class="periods-hint">(Click any period to jump to it)</div>
             </div>
         `;
     }
@@ -4062,7 +4464,7 @@ function renderDayView(preserveScroll = true) {
     `;
     
     allDayEvents.forEach(event => {
-        const color = getColorForCategory(event.category);
+        const color = event.color || getColorForCategory(event.category);
         const idx = (state.events[dateKey] || []).indexOf(event);
         const bgColor = getEventBackground(color);
         const textColor = getEventTextColor(color);
@@ -4082,25 +4484,37 @@ function renderDayView(preserveScroll = true) {
     
     const header = document.getElementById('weekHeader');
     header.innerHTML = html;
-    
+
     // Click handlers for all-day events
     header.querySelectorAll('.all-day-event').forEach(el => {
         const dateKey = el.dataset.date;
         const idx = parseInt(el.dataset.eventIdx);
-        
-        // Long press detection
+
+        // Long press detection with movement tolerance
         let pressTimer;
-        
+        let touchStartX, touchStartY;
+        const MOVE_TOLERANCE = 15;
+
         el.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
             pressTimer = setTimeout(() => {
                 enterSelectionMode(dateKey, idx);
                 if (navigator.vibrate) navigator.vibrate(50);
             }, 500);
         }, { passive: true });
-        
+
         el.addEventListener('touchend', () => clearTimeout(pressTimer));
-        el.addEventListener('touchmove', () => clearTimeout(pressTimer));
-        
+        el.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            const dx = Math.abs(touch.clientX - touchStartX);
+            const dy = Math.abs(touch.clientY - touchStartY);
+            if (dx > MOVE_TOLERANCE || dy > MOVE_TOLERANCE) {
+                clearTimeout(pressTimer);
+            }
+        }, { passive: true });
+
         el.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             enterSelectionMode(dateKey, idx);
@@ -4108,21 +4522,21 @@ function renderDayView(preserveScroll = true) {
 
         el.addEventListener('click', (e) => {
             e.stopPropagation();
-            
+
             if (state.selectionMode) {
                 toggleSelection(dateKey, idx);
                 return;
             }
-            
+
             const event = state.events[dateKey][idx];
             showEventPopup(event, dateKey, e.clientX, e.clientY);
         });
-        
+
         if (state.selectedEvents.has(`${dateKey}:${idx}`)) {
             el.classList.add('selected');
         }
     });
-    
+
     renderTimeGrid(preserveScroll);
 }
 
@@ -4178,7 +4592,7 @@ function showEventPopup(event, dateKey, x, y) {
     state.selectedEventDate = dateKey;
     
     const popup = document.getElementById('eventPopup');
-    const color = getColorForCategory(event.category);
+    const color = event.color || getColorForCategory(event.category);
     const isIcs = event.source === 'ics' || event.readOnly;
     
     // Color bar
@@ -4406,43 +4820,66 @@ function showEventPopup(event, dateKey, x, y) {
     }
     
     // Position popup - show it first to measure height
-    popup.style.visibility = 'hidden';
     popup.hidden = false;
-    
-    const popupRect = popup.getBoundingClientRect();
-    const popupWidth = popupRect.width || 380;
-    const popupHeight = popupRect.height || 400;
-    
-    // Calculate position
-    let left = x;
-    let top = y;
-    
-    // Check horizontal bounds
-    if (left + popupWidth > window.innerWidth - 16) {
-        left = window.innerWidth - popupWidth - 16;
-    }
-    left = Math.max(16, left);
-    
-    // Check vertical bounds - if not enough space below, position above
-    if (top + popupHeight > window.innerHeight - 16) {
-        // Try positioning above the click point
-        top = y - popupHeight - 10;
-        if (top < 16) {
-            // If still not enough space, position at top with scroll
-            top = 16;
+
+    // Get the actual content element for positioning
+    const popupContent = popup.querySelector('.event-popup-content');
+
+    // On mobile, let CSS handle centering; only do JS positioning on desktop
+    if (window.innerWidth <= 768) {
+        popupContent.style.left = '';
+        popupContent.style.top = '';
+        popupContent.style.transform = '';
+        popupContent.style.maxHeight = '';
+        popupContent.style.overflowY = '';
+    } else {
+        popupContent.style.visibility = 'hidden';
+
+        const popupRect = popupContent.getBoundingClientRect();
+        const popupWidth = popupRect.width || 320;
+        const popupHeight = popupRect.height || 400;
+
+        // Calculate position
+        let left = x;
+        let top = y;
+
+        // Check horizontal bounds
+        if (left + popupWidth > window.innerWidth - 16) {
+            left = window.innerWidth - popupWidth - 16;
         }
+        left = Math.max(16, left);
+
+        // Check vertical bounds - if not enough space below, position above
+        if (top + popupHeight > window.innerHeight - 16) {
+            // Try positioning above the click point
+            top = y - popupHeight - 10;
+            if (top < 16) {
+                // If still not enough space, position at top with scroll
+                top = 16;
+            }
+        }
+        top = Math.max(16, top);
+
+        popupContent.style.left = `${left}px`;
+        popupContent.style.top = `${top}px`;
+        popupContent.style.transform = 'none'; // Remove centering transform
+        popupContent.style.visibility = 'visible';
+        popupContent.style.maxHeight = `${window.innerHeight - 32}px`;
+        popupContent.style.overflowY = 'auto';
     }
-    top = Math.max(16, top);
-    
-    popup.style.left = `${left}px`;
-    popup.style.top = `${top}px`;
-    popup.style.visibility = 'visible';
-    popup.style.maxHeight = `${window.innerHeight - 32}px`;
-    popup.style.overflowY = 'auto';
 }
 
 function hideEventPopup() {
-    document.getElementById('eventPopup').hidden = true;
+    const popup = document.getElementById('eventPopup');
+    popup.hidden = true;
+    // Reset content positioning for next show
+    const popupContent = popup.querySelector('.event-popup-content');
+    if (popupContent) {
+        popupContent.style.left = '';
+        popupContent.style.top = '';
+        popupContent.style.transform = '';
+        popupContent.style.visibility = '';
+    }
     document.getElementById('snoozeDropdown').hidden = true;
     state.selectedEvent = null;
 }
@@ -4458,7 +4895,7 @@ function showEventTooltip(event, dateKey, x, y) {
     tooltip.className = 'event-tooltip';
     tooltip.id = 'eventTooltip';
     
-    const color = getColorForCategory(event.category);
+    const color = event.color || getColorForCategory(event.category);
     tooltip.style.borderLeftColor = color;
     
     let html = `<div class="event-tooltip-title">${event.title}</div>`;
@@ -5141,6 +5578,7 @@ async function loadEvents(refresh = false, showSpinner = true) {
             // Load entire year
             startDate = new Date(state.weekStart.getFullYear(), 0, 1);
             endDate = new Date(state.weekStart.getFullYear(), 11, 31);
+            prefetchedYears.add(state.weekStart.getFullYear());
         } else if (state.viewMode === 'month') {
             startDate = new Date(state.weekStart.getFullYear(), state.weekStart.getMonth(), 1);
             endDate = new Date(state.weekStart.getFullYear(), state.weekStart.getMonth() + 1, 0);
@@ -5168,14 +5606,16 @@ async function loadEvents(refresh = false, showSpinner = true) {
             endDate.setDate(endDate.getDate() + 6);
         }
         
-        // Show cached data immediately while fetching
+        // Show cached data immediately while fetching (stale-while-revalidate pattern)
         const cachedEvents = loadEventsFromCache();
-        if (Object.keys(cachedEvents).length > 0 && !showSpinner) {
+        if (Object.keys(cachedEvents).length > 0) {
             // Merge cached events with current state for immediate display
             state.events = { ...state.events, ...cachedEvents };
             renderView();
+            // If we have cached data and showing spinner, hide it since we have something to show
+            if (showSpinner) showLoading(false);
         }
-        
+
         const events = await fetchEvents(formatDate(startDate), formatDate(endDate), refresh);
         
         if (refresh) {
@@ -5191,12 +5631,58 @@ async function loadEvents(refresh = false, showSpinner = true) {
             state.events = { ...state.events, ...(events || {}) };
         }
         renderView();
+
+        // Prefetch adjacent years in background when viewing year
+        if (state.viewMode === 'year') {
+            prefetchAdjacentYears(state.weekStart.getFullYear());
+        }
     } catch (error) {
         console.error('Error loading events:', error);
         showToast('Failed to load events', 'error');
     } finally {
         if (showSpinner) showLoading(false);
     }
+}
+
+// ==================== Adjacent Year Prefetch ====================
+
+// Track which years have been prefetched this session to avoid redundant fetches
+const prefetchedYears = new Set();
+
+function prefetchAdjacentYears(currentYear) {
+    if (!isOnline()) return;
+
+    const years = [currentYear - 1, currentYear + 1];
+    const toPrefetch = years.filter(y => !prefetchedYears.has(y));
+    if (toPrefetch.length === 0) return;
+
+    const schedule = typeof requestIdleCallback === 'function'
+        ? (fn) => requestIdleCallback(fn, { timeout: 5000 })
+        : (fn) => setTimeout(fn, 1000);
+
+    toPrefetch.forEach(year => {
+        schedule(async () => {
+            // Check again in case conditions changed
+            if (prefetchedYears.has(year) || !isOnline()) return;
+            prefetchedYears.add(year);
+
+            const start = formatDate(new Date(year, 0, 1));
+            const end = formatDate(new Date(year, 11, 31));
+            console.log(`Prefetching year ${year} in background`);
+
+            try {
+                const events = await fetchEvents(start, end, false);
+                if (events && Object.keys(events).length > 0) {
+                    // Merge into state silently (no re-render — user hasn't navigated there yet)
+                    state.events = { ...state.events, ...events };
+                }
+            } catch (e) {
+                // Silent failure — prefetch is best-effort
+                prefetchedYears.delete(year);
+                console.warn(`Prefetch year ${year} failed:`, e);
+            }
+        });
+    });
 }
 
 // ==================== Navigation ====================
@@ -5341,7 +5827,7 @@ function init() {
     });
     
     // Restore PARA sections collapsed state
-    ['Inbox', 'Projects', 'Areas', 'Resources', 'Archives'].forEach(paraType => {
+    ['Inbox', 'Projects', 'Subprojects', 'Areas', 'Resources', 'Archives'].forEach(paraType => {
         if (localStorage.getItem(`para${paraType}Collapsed`) === 'true') {
             document.getElementById(`${paraType.toLowerCase()}Section`)?.classList.add('collapsed');
         }
@@ -5778,13 +6264,27 @@ function init() {
     // Initial load - try to show cached data first, then refresh in background
     const cachedEvents = loadEventsFromCache();
     if (cachedEvents && Object.keys(cachedEvents).length > 0) {
+        console.log('Loading from cache:', Object.keys(cachedEvents).length, 'dates');
         state.events = cachedEvents;
         renderView(true);  // Scroll to today on initial load
-        // Then refresh from server in background
-        loadEvents(true, false);
+
+        // If online, refresh from server in background
+        if (isOnline()) {
+            loadEvents(true, false);
+        } else {
+            showConnectionStatus(false, 'Offline - showing cached data');
+            showToast('Offline mode - using cached events', 'info');
+        }
     } else {
-        // No cache, show spinner for initial load
-        loadEvents();
+        // No cache
+        if (!isOnline()) {
+            showConnectionStatus(false, 'Offline - no cached data available');
+            showToast('Offline and no cached data. Connect to load events.', 'warning');
+            renderView(true);
+        } else {
+            // Online, show spinner for initial load
+            loadEvents();
+        }
     }
 }
 
@@ -5816,10 +6316,17 @@ const defaultSettings = {
     // Big Rocks / Availability
     rockThreshold: 3,
     heavyThreshold: 6,
+    deadlinesAsBigRocks: false,
     weekendsAvailable: false,
     availableMinDays: 3,        // Minimum consecutive days for available period
     availableMaxHours: 2,       // Maximum hours per day to count as available
     
+    // Zoom levels (numeric, set by Ctrl+scroll)
+    hourHeightPx: null,         // null = use density preset; number = custom px value (30-120)
+    glanceColWidthPx: null,     // null = use column width preset; number = custom px value (80-300)
+    glanceRowHeightPx: null,    // null = auto; number = custom px value (14-40)
+    heatmapCellSizePx: null,    // null = use default 14px; number = custom px value (8-24)
+
     // Year at a Glance settings
     yearGlanceFormat: 'suffix',        // 'prefix' ([Project] Title), 'suffix' (Title • Project), 'tooltip' (Title only), 'twolines'
     yearGlanceColumnWidth: 'normal',   // 'compact' (120px), 'normal' (160px), 'wide' (200px)
@@ -5861,8 +6368,9 @@ async function loadSettings() {
     applySettings();
     
     // Then fetch server settings and merge (server wins for synced keys)
+    // Use timeout to avoid hanging when server is unreachable
     try {
-        const response = await fetch(`${API_BASE}/api/settings`);
+        const response = await fetchWithTimeout(`${API_BASE}/api/settings`, {}, 5000);
         if (response.ok) {
             const serverSettings = await response.json();
             if (serverSettings && Object.keys(serverSettings).length > 0) {
@@ -5924,17 +6432,47 @@ async function syncSettingsToServer() {
 }
 
 function applySettings() {
-    // Apply theme
-    document.documentElement.setAttribute('data-theme', settings.theme || 'system');
+    // Apply theme — resolve "system" to actual light/dark for reliable switching
+    const themePref = settings.theme || 'system';
+    let resolvedTheme = themePref;
+    if (themePref === 'system') {
+        resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', resolvedTheme);
+
+    // Update meta theme-color
+    const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeColor) {
+        metaThemeColor.setAttribute('content', resolvedTheme === 'dark' ? '#1e1e2e' : '#faf9f7');
+    }
     
-    // Apply density (hour height)
+    // Apply density (hour height) - custom zoom overrides presets
     const densityMap = {
         'compact': 40,
         'comfortable': 60,
         'spacious': 80
     };
-    const hourHeight = densityMap[settings.density] || 60;
+    const hourHeight = settings.hourHeightPx || densityMap[settings.density] || 60;
     document.documentElement.style.setProperty('--hour-height', `${hourHeight}px`);
+
+    // Apply glance column width (custom zoom overrides presets)
+    if (settings.glanceColWidthPx) {
+        document.documentElement.style.setProperty('--glance-col-width', `${settings.glanceColWidthPx}px`);
+    } else {
+        // Remove variable so CSS class-based fallback values apply (120/160/200px per preset)
+        document.documentElement.style.removeProperty('--glance-col-width');
+    }
+
+    // Apply glance row height (custom zoom)
+    if (settings.glanceRowHeightPx) {
+        document.documentElement.style.setProperty('--glance-row-height', `${settings.glanceRowHeightPx}px`);
+    } else {
+        document.documentElement.style.removeProperty('--glance-row-height');
+    }
+
+    // Apply heatmap cell size (custom zoom)
+    const heatmapSize = settings.heatmapCellSizePx || 14;
+    document.documentElement.style.setProperty('--heatmap-cell-size', `${heatmapSize}px`);
     
     // Apply font scale
     document.documentElement.style.setProperty('--font-scale', settings.fontScale);
@@ -5982,6 +6520,7 @@ function showSettingsModal() {
     document.getElementById('rockThresholdValue').textContent = `${settings.rockThreshold}h`;
     document.getElementById('settingHeavyThreshold').value = settings.heavyThreshold;
     document.getElementById('heavyThresholdValue').textContent = `${settings.heavyThreshold}h`;
+    document.getElementById('settingDeadlinesAsBigRocks').checked = settings.deadlinesAsBigRocks;
     document.getElementById('settingWeekendsAvailable').checked = settings.weekendsAvailable;
     document.getElementById('settingAvailableMinDays').value = settings.availableMinDays;
     document.getElementById('settingAvailableMaxHours').value = settings.availableMaxHours;
@@ -6173,6 +6712,7 @@ function collectSettingsFromForm() {
     // Big Rocks / Availability
     settings.rockThreshold = parseInt(document.getElementById('settingRockThreshold').value);
     settings.heavyThreshold = parseInt(document.getElementById('settingHeavyThreshold').value);
+    settings.deadlinesAsBigRocks = document.getElementById('settingDeadlinesAsBigRocks').checked;
     settings.weekendsAvailable = document.getElementById('settingWeekendsAvailable').checked;
     settings.availableMinDays = parseInt(document.getElementById('settingAvailableMinDays').value);
     settings.availableMaxHours = parseInt(document.getElementById('settingAvailableMaxHours').value);
@@ -6387,10 +6927,36 @@ function initIcsCalendarHandlers() {
 function initSettingsHandlers() {
     // Settings button
     document.getElementById('settingsBtn').addEventListener('click', showSettingsModal);
-    
+
+    // Mobile sidebar action buttons (mirrors of header buttons)
+    document.getElementById('mobileSearchBtn')?.addEventListener('click', () => {
+        toggleSidebar();
+        const searchBar = document.getElementById('searchBar');
+        searchBar.hidden = false;
+        searchBar.querySelector('input').focus();
+    });
+    document.getElementById('mobileRefreshBtn')?.addEventListener('click', () => {
+        toggleSidebar();
+        showToast('Refreshing...', 'info');
+        loadEvents(true, false);
+    });
+    document.getElementById('mobileSettingsBtn')?.addEventListener('click', () => {
+        toggleSidebar();
+        showSettingsModal();
+    });
+
     // Close buttons
     document.getElementById('settingsModalClose').addEventListener('click', hideSettingsModal);
-    
+
+    // Show Notifications tab when running inside Android WebView
+    if (window.Android) {
+        const notifTab = document.getElementById('settingsNotificationsTab');
+        if (notifTab) notifTab.style.display = '';
+        document.getElementById('openAndroidNotificationSettings')?.addEventListener('click', () => {
+            window.Android.openNotificationSettings();
+        });
+    }
+
     // Tab navigation
     document.querySelectorAll('.settings-tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -6452,9 +7018,9 @@ function initSettingsHandlers() {
     });
     
     // Checkboxes/toggles - auto-save on change
-    ['settingShowRelativeTime', 'settingShowCompleted', 'settingShowScheduled', 
-     'settingShowDeadlines', 'settingShowTimestamps', 'settingShowGcal', 
-     'settingWeekendsAvailable'].forEach(id => {
+    ['settingShowRelativeTime', 'settingShowCompleted', 'settingShowScheduled',
+     'settingShowDeadlines', 'settingShowTimestamps', 'settingShowGcal',
+     'settingDeadlinesAsBigRocks', 'settingWeekendsAvailable'].forEach(id => {
         document.getElementById(id).addEventListener('change', autoSaveSettings);
     });
     
@@ -6474,7 +7040,22 @@ function initSettingsHandlers() {
             showToast('Settings reset to defaults', 'success');
         }
     });
-    
+
+    // Reload all data button
+    document.getElementById('reloadAllData').addEventListener('click', async () => {
+        showToast('Reloading all calendar data...', 'info');
+        hideSettingsModal();
+
+        // Clear cached events
+        state.events = {};
+        localStorage.removeItem('orgCalendarEvents');
+        localStorage.removeItem('orgCalendarEventsTime');
+
+        // Force refresh from server with spinner
+        await loadEvents(true, true);
+        showToast('All calendar data reloaded', 'success');
+    });
+
     // Close modal on background click
     document.getElementById('settingsModal').addEventListener('click', (e) => {
         if (e.target.id === 'settingsModal') {
@@ -6486,14 +7067,25 @@ function initSettingsHandlers() {
 // ==================== Offline Handling ====================
 
 function initOfflineHandling() {
-    // Update offline state
-    state.isOffline = !navigator.onLine;
+    // Start as offline until we verify server connection
+    state.isOffline = true;
+    state.serverOnline = false;
     updateOfflineUI();
-    
-    // Listen for online/offline events
+
+    // Check actual server connectivity (async, will update UI when done)
+    checkServerConnection();
+
+    // Listen for network online/offline events
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    
+
+    // Periodically check server connectivity (every 30 seconds when online, every 10 when offline)
+    setInterval(() => {
+        if (navigator.onLine) {
+            checkServerConnection();
+        }
+    }, state.serverOnline ? 30000 : 10000);
+
     // Listen for messages from service worker
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         navigator.serviceWorker.addEventListener('message', (event) => {
@@ -6510,30 +7102,27 @@ function initOfflineHandling() {
             }
         });
     }
-    
+
     // Check pending events count
     updatePendingCount();
-    
+
     // Sync button handler
     document.getElementById('offlineSyncBtn')?.addEventListener('click', syncOfflineEvents);
 }
 
-function handleOnline() {
-    state.isOffline = false;
-    updateOfflineUI();
-    showToast('Back online', 'success');
-    
-    // Try to sync any pending events
-    syncOfflineEvents();
-    
-    // Refresh data
-    loadEvents(true, false);
+async function handleOnline() {
+    // Network came back - but check if server is actually reachable
+    const serverUp = await checkServerConnection();
+    if (serverUp) {
+        // Server is reachable, refresh data
+        loadEvents(true, false);
+    }
+    // If server not reachable, checkServerConnection already updated UI
 }
 
 function handleOffline() {
-    state.isOffline = true;
-    updateOfflineUI();
-    showToast('You are offline. Events will be saved locally.', 'info');
+    // Network disconnected - definitely offline
+    setServerStatus(false, 'No network connection');
 }
 
 function updateOfflineUI() {
@@ -6636,6 +7225,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initOfflineHandling();  // Initialize offline support
     initSidebarResize();  // Initialize sidebar resize
     initPinchToZoom();  // Initialize pinch-to-zoom for view switching
+    initCtrlScrollZoom();  // Initialize Ctrl+scroll zoom for cell widths
     initNavYearToggle();  // Initialize year view toggle in navbar
     initRefileCombobox();  // Initialize searchable refile combobox
     cleanupOldIcsDoneEvents();  // Clean up old done markers
@@ -6645,9 +7235,92 @@ document.addEventListener('DOMContentLoaded', async () => {
     updatePendingChangesIndicator();  // Show pending changes if any
     init();
 
+    // Listen for system theme changes — event listener + polling fallback
+    const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
+    let lastKnownDark = darkMq.matches;
+
+    function onSystemThemeChange() {
+        const nowDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (nowDark === lastKnownDark) return;
+        lastKnownDark = nowDark;
+        if (settings.theme !== 'system') return;
+        applySettings();
+    }
+
+    // Primary: matchMedia change event
+    darkMq.addEventListener('change', onSystemThemeChange);
+
+    // Fallback: poll every 2s for environments where change events are unreliable
+    setInterval(() => {
+        if (settings.theme !== 'system') return;
+        const nowDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (nowDark !== lastKnownDark) {
+            onSystemThemeChange();
+        }
+    }, 2000);
+
     // Handle PWA shortcuts and URL parameters
     handleUrlParameters();
 });
+
+// ==================== Ctrl+Scroll Zoom ====================
+
+function initCtrlScrollZoom() {
+    let saveTimeout = null;
+
+    function debouncedSave() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+            saveSettings();
+        }, 300);
+    }
+
+    document.querySelector('.calendar-main')?.addEventListener('wheel', (e) => {
+        if (!e.ctrlKey && !e.metaKey) return;
+        e.preventDefault();
+
+        const delta = e.deltaY > 0 ? -1 : 1; // scroll up = zoom in, scroll down = zoom out
+        const viewMode = state.viewMode;
+
+        if (viewMode === 'week' || viewMode === '3day' || viewMode === 'day') {
+            // Zoom hour height
+            const densityMap = { 'compact': 40, 'comfortable': 60, 'spacious': 80 };
+            const current = settings.hourHeightPx || densityMap[settings.density] || 60;
+            const step = 5;
+            const newVal = Math.max(30, Math.min(120, current + delta * step));
+            settings.hourHeightPx = newVal;
+            document.documentElement.style.setProperty('--hour-height', `${newVal}px`);
+            renderView();
+            debouncedSave();
+        } else if (viewMode === 'year' && state.yearViewMode === 'glance') {
+            if (e.shiftKey) {
+                // Ctrl+Shift+scroll: vertical zoom (row height)
+                const current = settings.glanceRowHeightPx || 24; // default ~24px (padding + font)
+                const step = 2;
+                const newVal = Math.max(14, Math.min(40, current + delta * step));
+                settings.glanceRowHeightPx = newVal;
+                document.documentElement.style.setProperty('--glance-row-height', `${newVal}px`);
+            } else {
+                // Ctrl+scroll: horizontal zoom (column width)
+                const glanceWidthMap = { 'compact': 120, 'normal': 160, 'wide': 200 };
+                const current = settings.glanceColWidthPx || glanceWidthMap[settings.yearGlanceColumnWidth] || 160;
+                const step = 10;
+                const newVal = Math.max(80, Math.min(300, current + delta * step));
+                settings.glanceColWidthPx = newVal;
+                document.documentElement.style.setProperty('--glance-col-width', `${newVal}px`);
+            }
+            debouncedSave();
+        } else if (viewMode === 'year' && state.yearViewMode !== 'glance') {
+            // Zoom heatmap cell size
+            const current = settings.heatmapCellSizePx || 14;
+            const step = 1;
+            const newVal = Math.max(8, Math.min(24, current + delta * step));
+            settings.heatmapCellSizePx = newVal;
+            document.documentElement.style.setProperty('--heatmap-cell-size', `${newVal}px`);
+            debouncedSave();
+        }
+    }, { passive: false });
+}
 
 // ==================== Sidebar Resize ====================
 
@@ -6807,9 +7480,9 @@ function handleUrlParameters() {
         handled = true;
     }
     
-    // Handle action parameter (e.g., ?action=create)
+    // Handle action parameter (e.g., ?action=create or ?action=add_task)
     const actionParam = params.get('action');
-    if (actionParam === 'create') {
+    if (actionParam === 'create' || actionParam === 'add_task') {
         // Small delay to ensure everything is initialized
         setTimeout(() => showCreateModal(), 100);
         handled = true;
@@ -6835,5 +7508,11 @@ function handleUrlParameters() {
 }
 
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(console.error);
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(reg => {
+            console.log('Service worker registered:', reg.scope);
+            // Check for updates periodically
+            setInterval(() => reg.update(), 60 * 60 * 1000); // Every hour
+        })
+        .catch(err => console.error('Service worker registration failed:', err));
 }
