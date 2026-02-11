@@ -1,0 +1,158 @@
+#+TITLE: Org Calendar Web
+#+AUTHOR: Bala Ramadurai
+#+DESCRIPTION: A mobile-friendly web calendar for Emacs org-mode with real-time sync
+
+* Org Calendar Web
+
+A Progressive Web App that brings your Emacs org-mode calendar to any browser or mobile device. It communicates with a running Emacs server to provide full read/write access to your org agenda --- create, reschedule, refile, and complete events from your phone, tablet, or desktop browser.
+
+** Features
+
+*** Multiple Views
+- *Week* --- 7-day time grid with draggable events
+- *3-Day* --- compact 3-day time grid
+- *Day* --- single day with hourly breakdown
+- *Month* --- calendar grid with Big Rocks indicators
+- *Year* --- heatmap (activity intensity) or at-a-glance (filtered event list)
+- *Agenda* --- chronological event list
+
+*** Full Event Management
+- Create, edit, reschedule, and delete org events
+- Drag-and-drop rescheduling with optimistic UI updates
+- TODO state transitions (TODO/NEXT/WAITING/DONE/CANCELLED)
+- Priority tagging (A, B, C)
+- Refile events between org file locations
+- Open events directly in Emacs at the correct file and line
+- Toggle checklist items within event notes
+
+*** ICS Calendar Integration
+- Subscribe to Google Calendar, Caldav, and other ICS feeds
+- Multiple calendars with custom names and colors
+- Timezone-aware event conversion
+- Handles recurring events with RRULE expansion, EXDATE, and RECURRENCE-ID exceptions
+
+*** Offline & PWA Support
+- Installable as a standalone app on mobile and desktop
+- Service Worker for offline access
+- Events created offline queue in IndexedDB and auto-sync on reconnect
+- Stale-while-revalidate caching for instant page loads
+
+*** PARA Method Integration
+- Sidebar organized by Tiago Forte's PARA categories
+- Inbox, Projects, Subprojects, Areas, Resources, Archives
+- Automatic classification based on org file paths
+
+*** Keyboard Shortcuts & Command Palette
+| Key       | Action         |
+|-----------+----------------|
+| =C=       | Create event   |
+| =T=       | Go to today    |
+| =R=       | Refresh        |
+| =/=       | Search         |
+| =W=       | Week view      |
+| =3=       | 3-day view     |
+| =D=       | Day view       |
+| =M=       | Month view     |
+| =Y=       | Year view      |
+| =A=       | Agenda view    |
+| =N= / =→= | Next period    |
+| =P= / =←= | Previous       |
+| =B=       | Toggle sidebar |
+| =,=       | Settings       |
+| =?=       | Help           |
+
+*** Customization
+- Themes: Dark (Catppuccin Mocha), Light (Catppuccin Latte), or follow system
+- Ctrl+Scroll zoom to adjust density in any view
+- Configurable start/end hours, time format (12/24h), font scale
+- Year view filter presets: Big Rocks, Priority, Travel/Holiday, custom expressions
+- Auto-refresh interval (default 5 minutes)
+
+*** Android App
+- Native WebView wrapper with notification support
+- Scheduled event reminders via AlarmManager
+- Daily summary notifications
+- Home screen widget showing upcoming events
+
+** Requirements
+
+- Python 3.8+
+- Emacs with =server-start= enabled (=(server-start)= in your =init.el=)
+- =org-agenda-files= configured in Emacs
+- =~/.local/bin/org-agenda-calendar= script (queries org-agenda via emacsclient)
+
+** Quick Start
+
+#+begin_src bash
+# Clone the repository
+git clone https://github.com/balaramadurai/org-calendar-web.git
+cd org-calendar-web
+
+# First run (creates venv, installs dependencies, starts server)
+./start.sh --install
+
+# Subsequent runs
+./start.sh
+#+end_src
+
+The server starts on =http://localhost:8766= by default. Use =--port PORT= to change it.
+
+For mobile access, open the Network URL printed at startup on any device on the same network.
+
+** Systemd Service
+
+To run as a background service:
+
+#+begin_src bash
+# Copy and edit the service file
+sudo cp org-calendar-web.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now org-calendar-web
+#+end_src
+
+Make sure =emacs.service= is also running (or start Emacs with =emacs --daemon=).
+
+** Project Structure
+
+#+begin_example
+org-calendar-web/
+├── frontend/
+│   ├── index.html        # Single page app HTML
+│   ├── app.js            # All frontend logic
+│   ├── styles.css         # Catppuccin-themed styles
+│   ├── sw.js             # Service worker (offline support)
+│   └── manifest.json     # PWA manifest
+├── backend/
+│   ├── main.py           # FastAPI server
+│   ├── server.py         # Uvicorn entry point
+│   └── requirements.txt  # Python dependencies
+├── android/              # Android WebView wrapper
+├── start.sh              # Startup script
+└── org-calendar-web.service  # Systemd unit file
+#+end_example
+
+** API Endpoints
+
+| Method | Endpoint                    | Description                    |
+|--------+-----------------------------+--------------------------------|
+| GET    | =/api/events=               | Fetch events for date range    |
+| POST   | =/api/events=               | Create a new event             |
+| POST   | =/api/events/update=        | Update event properties        |
+| POST   | =/api/events/reschedule=    | Change event date/time         |
+| POST   | =/api/events/state=         | Change TODO state              |
+| POST   | =/api/events/done=          | Mark event DONE                |
+| POST   | =/api/events/delete=        | Archive/delete event           |
+| POST   | =/api/events/refile=        | Move to different org location |
+| POST   | =/api/events/toggle-checkbox= | Toggle checkbox in notes     |
+| POST   | =/api/open=                 | Open file at line in Emacs     |
+| GET    | =/api/categories=           | List org categories            |
+| GET    | =/api/todo-keywords=        | Fetch org-todo-keywords        |
+| GET    | =/api/refile-targets=       | Get refile targets             |
+| POST   | =/api/ics/events=           | Fetch ICS calendar events      |
+| GET    | =/api/settings=             | Load settings                  |
+| POST   | =/api/settings=             | Save settings                  |
+| GET    | =/api/status=               | Server/Emacs status            |
+
+** License
+
+GPL-3.0
