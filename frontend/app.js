@@ -3941,12 +3941,14 @@ function getYearGlanceFilter() {
     
     switch (preset) {
         case 'bigRocks':
-            // Events >= rockThreshold hours OR all-day events
+            // Events >= rockThreshold hours OR all-day events (excluding gcal all-day)
             return (event) => {
                 // Exclude deadlines from big rocks unless setting is enabled
                 if (event.type === 'deadline' && !settings.deadlinesAsBigRocks) return false;
-                const duration = getEventDuration(event);
                 const isAllDay = !!(event.all_day || event.allDay || !event.time);
+                // gcal all-day events (birthdays, holidays) are not big rocks
+                if (isAllDay && (event.type === 'gcal' || event.source === 'ics')) return false;
+                const duration = getEventDuration(event);
                 return duration >= rockThreshold || isAllDay;
             };
         
@@ -5450,7 +5452,7 @@ const commands = [
     // Actions
     { id: 'new-event', title: 'New Event', desc: 'Create a new event', shortcut: 'C', icon: '➕', action: () => showCreateModal() },
     { id: 'today', title: 'Go to Today', desc: 'Jump to current date', shortcut: 'T', icon: '📅', action: () => goToToday() },
-    { id: 'refresh', title: 'Refresh Events', desc: 'Reload events from Emacs', shortcut: 'R', icon: '🔄', action: () => { showToast('Refreshing...', 'info'); loadEvents(true, false); } },
+    { id: 'refresh', title: 'Refresh Events', desc: 'Reload events from Emacs', shortcut: 'R', icon: '🔄', action: () => { showToast('Refreshing...', 'info'); const btn = document.getElementById('refreshBtn'); btn.classList.add('spinning'); loadEvents(true, false).finally(() => btn.classList.remove('spinning')); } },
     { id: 'search', title: 'Search', desc: 'Search events', shortcut: '/', icon: '🔍', action: () => document.getElementById('searchBtn').click() },
     
     // Views
@@ -5748,7 +5750,9 @@ function init() {
     document.getElementById('todayBtn').addEventListener('click', goToToday);
     document.getElementById('refreshBtn').addEventListener('click', () => {
         showToast('Refreshing...', 'info');
-        loadEvents(true, false);
+        const btn = document.getElementById('refreshBtn');
+        btn.classList.add('spinning');
+        loadEvents(true, false).finally(() => btn.classList.remove('spinning'));
     });
     
     // View menu dropdown
