@@ -100,6 +100,7 @@ class EventLocation(BaseModel):
     """Used for operations that just need file and line."""
     file: str
     line: int
+    title: Optional[str] = None  # optional: verify heading at `line` matches before mutating
 
 
 class EventUpdateRequest(BaseModel):
@@ -913,20 +914,63 @@ async def mark_event_done(request: EventLocation):
     # Validate file exists
     if not os.path.isfile(file_path):
         raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
-    
-    elisp = f'''
+
+    escaped_file = file_path.replace('\\', '\\\\').replace('"', '\\"')
+    # Optional: when the client sends the expected title we verify the heading at
+    # `line` still matches before mutating, so a stale line number can't silently
+    # mark the wrong task done. Empty string disables the guard (backward compat).
+    escaped_title = (request.title or "").replace('\\', '\\\\').replace('"', '\\"')
+
+    # raw string: backslashes in the cookie-stripping regex must reach elisp intact
+    elisp = r'''
     (progn
-      (find-file "{file_path}")
-      (goto-line {line_num})
+      (find-file "__FILE__")
+      (goto-line __LINE__)
       (org-back-to-heading t)
-      (org-todo "DONE")
-      (save-buffer)
-      "done")
+      (let* ((expected "__TITLE__")
+             ;; normalize: drop statistics cookies ([n/m], [n%]), collapse
+             ;; whitespace, downcase -- so a cookie or case diff isn't a mismatch
+             (normfn (lambda (s)
+                       (string-trim
+                        (replace-regexp-in-string
+                         "  +" " "
+                         (replace-regexp-in-string
+                          "\\[[0-9]*\\(%\\|/[0-9]*\\)\\]" ""
+                          (downcase s))))))
+             (e (funcall normfn expected))
+             (a (funcall normfn (org-get-heading t t t t))))
+        (if (and (> (length e) 0)
+                 (not (or (string-match-p (regexp-quote e) a)
+                          (string-match-p (regexp-quote a) e))))
+            (format "MISMATCH:%s" (substring-no-properties (org-get-heading t t t t)))
+          (progn
+            ;; Self-heal: a repeating task left stuck in a DONE state (e.g. an
+            ;; org-todo interrupted before org-auto-repeat-maybe ran) will NOT
+            ;; re-repeat on a plain (org-todo "DONE"). Reset it to its TODO state
+            ;; first so the repeater fires and the date advances cleanly.
+            (when (and (org-entry-is-done-p) (org-get-repeat))
+              (org-todo 'todo))
+            (org-todo "DONE")
+            (save-buffer)
+            "done"))))
     '''
-    
+    elisp = (elisp
+             .replace("__FILE__", escaped_file)
+             .replace("__LINE__", str(line_num))
+             .replace("__TITLE__", escaped_title))
+
     result = run_emacsclient_eval(elisp)
+    # run_emacsclient_eval returns the elisp string result wrapped in quotes
+    unwrapped = result[1:-1] if len(result) >= 2 and result[0] == '"' else result
+    if unwrapped.startswith("MISMATCH:"):
+        actual = unwrapped[len("MISMATCH:"):]
+        raise HTTPException(
+            status_code=409,
+            detail=f"Heading at line {line_num} no longer matches "
+                   f"(found '{actual}'). Refresh and retry.",
+        )
     events_cache.clear()
-    
+
     return {"status": "done"}
 
 

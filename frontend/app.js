@@ -1197,7 +1197,9 @@ async function markEventDone(event) {
         const response = await fetch(`${API_BASE}/api/events/done`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ file: event.file, line: event.line })
+            // send title so the backend can verify the heading at `line` before
+            // mutating (guards against a stale line marking the wrong task done)
+            body: JSON.stringify({ file: event.file, line: event.line, title: event.title })
         });
         if (!response.ok) {
             const data = await response.json();
