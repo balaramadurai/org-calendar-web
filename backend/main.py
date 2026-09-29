@@ -47,6 +47,17 @@ PARA_FOLDERS = {
 }
 
 
+DEFAULT_PROJECTS_SETTINGS = {
+    "unstuckStates": ["WAITING", "NEXT", "DRAFT"],
+    "excludedCategory": "FriendFamilyPerson",
+    "workCategories": ["Work", "Entrepreneur", "Organizer", "Coach", "Professor",
+                        "Author", "Blog", "Marketing", "Podcaster", "COEXIST",
+                        "Learner", "GitHub"],
+    "projectRootLevel": 1,
+    "includeAbandoned": False,
+}
+
+
 def classify_para(file_path: str) -> str:
     """Classify a file path into PARA category based on folder location."""
     if not file_path:
@@ -94,6 +105,7 @@ class EventReschedule(BaseModel):
     line: int
     new_date: str  # YYYY-MM-DD
     new_time: Optional[str] = None
+    new_end_time: Optional[str] = None
 
 
 class EventLocation(BaseModel):
@@ -141,7 +153,12 @@ def check_emacs_server() -> bool:
 
 
 async def fetch_events_for_month(year_month: str) -> Dict[str, List[Dict]]:
-    """Fetch events for a specific month using org-agenda-calendar."""
+    """Fetch events for a specific month using org-agenda-calendar.
+
+    org-agenda-calendar now shells out to org-agenda-calendar-batch (a separate
+    `emacs --batch -Q`, cached, hard-timeout) instead of emacsclient, so this
+    never blocks the live Emacs.  Cold scans are ~1s, warm ~0.1s.
+    """
     script_path = Path.home() / ".local/bin/org-agenda-calendar"
     
     if not script_path.exists():
@@ -153,16 +170,104 @@ async def fetch_events_for_month(year_month: str) -> Dict[str, List[Dict]]:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=30)
-        
+        # A single-month org-agenda-calendar scan has been observed taking
+        # ~22s under normal load; 30s left almost no margin and was tripping
+        # this timeout (and the 504 below) even for scans that would have
+        # finished well inside the frontend's 45s EMACS_SCAN_TIMEOUT_MS
+        # client-side abort. Raised generously (matches the 90s used for the
+        # whole-year scan below) so a genuinely slow-but-working scan can
+        # still complete and return 200; a truly hung Emacs process still
+        # gets caught and reported as 504, just with a saner grace period.
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
+
         if proc.returncode != 0:
             error_msg = stderr.decode() if stderr else "Unknown error"
             if "emacs_server_not_running" in error_msg or "emacs_server_not_running" in stdout.decode():
                 raise HTTPException(status_code=503, detail="Emacs server not running")
             raise HTTPException(status_code=500, detail=f"Failed to fetch events: {error_msg}")
-        
+
         events = json.loads(stdout.decode())
         return events
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Request timed out")
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Invalid JSON response: {e}")
+
+
+async def fetch_events_for_year(year: str) -> Dict[str, List[Dict]]:
+    """Fetch all events for a year in a single Emacs scan.
+
+    The org-agenda-calendar script scans every org file once per invocation,
+    so calling it 12 times (once per month) re-scans all files 12 times. Passing
+    a bare YYYY makes it scan once and return every month, which is far faster
+    for the year view. Output shape is identical to fetch_events_for_month.
+    """
+    script_path = Path.home() / ".local/bin/org-agenda-calendar"
+
+    if not script_path.exists():
+        raise HTTPException(status_code=500, detail="org-agenda-calendar script not found")
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            str(script_path), year,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        # Year scan touches the whole year, so allow more time than a month.
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=90)
+
+        if proc.returncode != 0:
+            error_msg = stderr.decode() if stderr else "Unknown error"
+            if "emacs_server_not_running" in error_msg or "emacs_server_not_running" in stdout.decode():
+                raise HTTPException(status_code=503, detail="Emacs server not running")
+            raise HTTPException(status_code=500, detail=f"Failed to fetch events: {error_msg}")
+
+        events = json.loads(stdout.decode())
+        return events
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="Request timed out")
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Invalid JSON response: {e}")
+
+
+async def fetch_projects_dashboard(projects_settings: dict) -> Dict[str, Any]:
+    """Fetch the GTD projects dashboard using org-agenda-projects.
+
+    Mirrors fetch_events_for_month/fetch_events_for_year's subprocess-invocation
+    pattern: same script-not-found check, same emacs_server_not_running -> 503,
+    same JSONDecodeError -> 500, same TimeoutError -> 504.
+    """
+    script_path = Path.home() / ".local/bin/org-agenda-projects"
+
+    if not script_path.exists():
+        raise HTTPException(status_code=500, detail="org-agenda-projects script not found")
+
+    args = [
+        str(projects_settings["excludedCategory"]),
+        ",".join(projects_settings["unstuckStates"]),
+        str(projects_settings["projectRootLevel"]),
+        "1" if projects_settings["includeAbandoned"] else "0",
+    ]
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            str(script_path), *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        # org-ql-select runs 7 separate queries over all org files (plus a
+        # descendant-count org-map-entries pass per matched marker), so allow
+        # generous headroom similar to the year-scan calendar timeout.
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=45)
+
+        if proc.returncode != 0:
+            error_msg = stderr.decode() if stderr else "Unknown error"
+            if "emacs_server_not_running" in error_msg or "emacs_server_not_running" in stdout.decode():
+                raise HTTPException(status_code=503, detail="Emacs server not running")
+            raise HTTPException(status_code=500, detail=f"Failed to fetch projects dashboard: {error_msg}")
+
+        data = json.loads(stdout.decode())
+        return data
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Request timed out")
     except json.JSONDecodeError as e:
@@ -497,7 +602,14 @@ async def fetch_ics_events(url: str, name: str, color: str, target_tz: str = "lo
 
 
 def run_emacsclient_eval(elisp: str) -> str:
-    """Execute elisp via emacsclient and return result."""
+    """Execute elisp via emacsclient and return result.
+
+    Raises a clean HTTPException rather than letting a raw subprocess/OS error
+    bubble up. When Emacs itself isn't reachable (server not started), this
+    raises 503 so callers/clients can distinguish "Emacs is down" from a real
+    elisp/org error (500) or a hung Emacs (504) -- mirrors the detection logic
+    already used by the org-agenda-calendar script for the read path.
+    """
     try:
         result = subprocess.run(
             ["emacsclient", "--eval", elisp],
@@ -505,13 +617,17 @@ def run_emacsclient_eval(elisp: str) -> str:
             text=True,
             timeout=30
         )
-        if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=f"Emacs error: {result.stderr}")
-        return result.stdout.strip()
     except subprocess.TimeoutExpired:
         raise HTTPException(status_code=504, detail="Emacs command timed out")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+    if result.returncode != 0:
+        stderr = result.stderr or ""
+        if any(marker in stderr for marker in ("can't find socket", "No socket", "Connection refused")):
+            raise HTTPException(status_code=503, detail="Emacs server not running")
+        raise HTTPException(status_code=500, detail=f"Emacs error: {stderr}")
+    return result.stdout.strip()
 
 
 @app.get("/")
@@ -568,27 +684,49 @@ async def get_events(
         not refresh
     )
     
-    # Fetch missing months
+    # Group the needed months by year so we can fetch a whole year in one scan
+    # when many of its months are missing (e.g. the year view). The org script
+    # re-scans every org file on each call, so one year-scan beats N month-scans.
+    months_by_year: Dict[str, List[str]] = {}
+    for month in months_needed:
+        months_by_year.setdefault(month[:4], []).append(month)
+
+    for year_str, year_months in months_by_year.items():
+        to_fetch = [m for m in year_months if not (cache_valid and m in events_cache)]
+        if not to_fetch:
+            continue
+
+        if len(to_fetch) >= 4:
+            # One scan for the whole year, then split into the month-keyed cache.
+            year_events = await fetch_events_for_year(year_str)
+            month_buckets: Dict[str, Dict[str, List[Dict]]] = {}
+            for date_key, day_events in year_events.items():
+                month_buckets.setdefault(date_key[:7], {})[date_key] = day_events
+            # Cache every month the scan returned (covers prefetch for the year)...
+            for mk, mevents in month_buckets.items():
+                events_cache[mk] = mevents
+            # ...and record empty months explicitly so they count as cached.
+            for m in year_months:
+                events_cache.setdefault(m, {})
+        else:
+            for m in to_fetch:
+                events_cache[m] = await fetch_events_for_month(m)
+
+    # Merge cached month data for the requested range
     all_events = {}
     for month in months_needed:
-        if cache_valid and month in events_cache:
-            month_events = events_cache[month]
-        else:
-            month_events = await fetch_events_for_month(month)
-            events_cache[month] = month_events
-        
-        # Merge events
+        month_events = events_cache.get(month, {})
         for date_key, day_events in month_events.items():
             if start_date <= date_key <= end_date:
                 if date_key not in all_events:
                     all_events[date_key] = []
                 all_events[date_key].extend(day_events)
-    
+
     cache_timestamp = datetime.now()
-    
+
     # Add PARA classification to all events
     all_events = add_para_to_events(all_events)
-    
+
     return {
         "events": all_events,
         "start_date": start_date,
@@ -645,27 +783,30 @@ async def get_events_for_date(date: str):
 
 @app.get("/categories")
 async def get_categories():
-    """Get all categories from org-agenda files."""
-    elisp = '''
-    (let ((cats '()))
-      (dolist (file (org-agenda-files))
-        (when (file-exists-p file)
-          (with-current-buffer (find-file-noselect file)
-            (org-map-entries
-             (lambda ()
-               (let ((cat (org-get-category)))
-                 (when cat (cl-pushnew cat cats :test #'string=))))))))
-      (json-encode (sort cats #'string<)))
-    '''
-    result = run_emacsclient_eval(elisp)
-    
-    # Parse the result (it's a quoted JSON string)
-    if result.startswith('"') and result.endswith('"'):
-        result = result[1:-1].replace('\\"', '"')
-    
+    """Get all categories from org-agenda files.
+
+    Runs in a separate batch Emacs (org-agenda-calendar-batch --categories),
+    NOT via emacsclient: an org-map-entries scan of every agenda file would
+    freeze the user's live Emacs.
+    """
+    script_path = Path.home() / ".local/bin/org-agenda-calendar-batch"
+    if not script_path.exists():
+        raise HTTPException(status_code=500, detail="org-agenda-calendar-batch script not found")
     try:
-        categories = json.loads(result)
-        return {"categories": categories}
+        proc = await asyncio.create_subprocess_exec(
+            str(script_path), "--categories",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env={**os.environ, "ORG_AGENDA_CALENDAR_TIMEOUT": "40"},
+        )
+        stdout, _stderr = await asyncio.wait_for(proc.communicate(), timeout=45)
+    except asyncio.TimeoutError:
+        proc.kill()
+        raise HTTPException(status_code=504, detail="Request timed out")
+    if proc.returncode != 0:
+        return {"categories": []}
+    try:
+        return {"categories": json.loads(stdout.decode())}
     except json.JSONDecodeError:
         return {"categories": []}
 
@@ -883,6 +1024,8 @@ async def reschedule_event(request: EventReschedule):
     timestamp = f"<{request.new_date}"
     if request.new_time:
         timestamp += f" {request.new_time}"
+        if request.new_end_time:
+            timestamp += f"-{request.new_end_time}"
     timestamp += ">"
     
     elisp = f'''
@@ -972,6 +1115,31 @@ async def mark_event_done(request: EventLocation):
     events_cache.clear()
 
     return {"status": "done"}
+
+
+@app.post("/events/clock-in")
+async def clock_in_event(request: EventLocation):
+    """Clock in to an org task heading via org-clock-in."""
+    file_path = request.file
+    line_num = request.line
+
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail=f"File not found: {file_path}")
+
+    escaped_file = file_path.replace('\\', '\\\\').replace('"', '\\"')
+
+    elisp = f'''
+    (progn
+      (find-file "{escaped_file}")
+      (goto-line {line_num})
+      (org-back-to-heading t)
+      (org-clock-in)
+      "clocked-in")
+    '''
+
+    run_emacsclient_eval(elisp)
+    events_cache.clear()
+    return {"status": "clocked-in"}
 
 
 class EventStateRequest(BaseModel):
@@ -1350,6 +1518,33 @@ async def patch_settings(request: Dict[str, Any]):
     current.update(request)
     save_server_settings(current)
     return {"status": "updated", "settings": current}
+
+
+# ==================== Projects Dashboard ====================
+
+@app.get("/projects")
+async def get_projects():
+    """GTD-style projects dashboard (stuck/waiting/next/active projects-areas-proposals-discussions),
+    ported from the user's Emacs org-ql agenda commands via org-agenda-projects."""
+    settings = load_server_settings()
+    projects_settings = {**DEFAULT_PROJECTS_SETTINGS, **settings.get("projectsSettings", {})}
+
+    data = await fetch_projects_dashboard(projects_settings)
+
+    work_categories = set(projects_settings["workCategories"])
+    for items in data.values():
+        for item in items:
+            item["para"] = classify_para(item.get("file", ""))
+            item["isWork"] = item.get("category") in work_categories
+
+    counts = {bucket: len(items) for bucket, items in data.items()}
+
+    return {
+        "generatedAt": datetime.now().isoformat(),
+        "settingsUsed": projects_settings,
+        "buckets": data,
+        "counts": counts,
+    }
 
 
 if __name__ == "__main__":
